@@ -21,6 +21,7 @@ const WalletPage = () => {
   const [deposits, setDeposits] = useState<any[]>([]);
   const [withdrawals, setWithdrawals] = useState<any[]>([]);
   const [transactions, setTransactions] = useState<any[]>([]);
+  const [upiId, setUpiId] = useState('Loading...');
 
   // Deposit form
   const [depositAmount, setDepositAmount] = useState('');
