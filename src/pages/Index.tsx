@@ -1,8 +1,9 @@
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
-import { Gamepad2, Trophy, Wallet, Shield, Zap, Users } from 'lucide-react';
+import { Trophy, Wallet, Shield, Zap, Users } from 'lucide-react';
 import Navbar from '@/components/Navbar';
+import appIcon from '@/assets/appicon.png';
 
 const Index = () => {
   const { user } = useAuth();
@@ -15,8 +16,8 @@ const Index = () => {
       <section className="relative overflow-hidden bg-grid">
         <div className="absolute inset-0 bg-gradient-to-b from-primary/5 via-transparent to-transparent" />
         <div className="container relative flex min-h-[70vh] flex-col items-center justify-center py-20 text-center">
-          <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-2xl bg-primary/10 glow-orange animate-float">
-            <Gamepad2 className="h-10 w-10 text-primary" />
+          <div className="mb-6">
+            <img src={appIcon} alt="CB Gaming Club" className="h-28 w-28 rounded-2xl object-cover glow-orange animate-float" />
           </div>
           <h1 className="font-display text-4xl font-bold leading-tight text-foreground md:text-6xl lg:text-7xl">
             CB <span className="text-primary glow-text">Gaming</span> Club

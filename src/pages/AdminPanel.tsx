@@ -188,9 +188,11 @@ const AdminPanel = () => {
     loadAll();
   };
 
-  const getScreenshotUrl = (path: string) => {
-    const { data } = supabase.storage.from('screenshots').getPublicUrl(path);
-    return data.publicUrl;
+  const getScreenshotUrl = async (path: string) => {
+    const { data } = await supabase.storage.from('screenshots').createSignedUrl(path, 3600);
+    if (data?.signedUrl) {
+      window.open(data.signedUrl, '_blank');
+    }
   };
 
   return (
@@ -235,9 +237,9 @@ const AdminPanel = () => {
                     </div>
                     <div className="flex items-center gap-2">
                       {d.screenshot_path && (
-                        <a href={getScreenshotUrl(d.screenshot_path)} target="_blank" rel="noopener">
-                          <Button variant="outline" size="sm"><Image className="h-4 w-4" /></Button>
-                        </a>
+                        <Button variant="outline" size="sm" onClick={() => getScreenshotUrl(d.screenshot_path)}>
+                          <Image className="h-4 w-4" />
+                        </Button>
                       )}
                       {d.status === 'pending' ? (
                         <>
