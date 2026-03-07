@@ -56,6 +56,10 @@ const WalletPage = () => {
 
     const { data: txns } = await supabase.from('wallet_transactions').select('*').eq('user_id', user.id).order('created_at', { ascending: false }).limit(20);
     setTransactions(txns || []);
+
+    // Load UPI from settings
+    const { data: upiData } = await supabase.from('app_settings').select('value').eq('key', 'upi_id').maybeSingle();
+    setUpiId(upiData?.value || 'Not configured');
   };
 
   const handleDeposit = async (e: React.FormEvent) => {
