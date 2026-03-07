@@ -173,26 +173,38 @@ export type Database = {
       }
       profiles: {
         Row: {
+          bio: string | null
           created_at: string
           email: string | null
+          favourite_game: string | null
           id: string
+          in_game_name: string | null
           is_banned: boolean
+          phone: string | null
           updated_at: string
           wallet_balance: number
         }
         Insert: {
+          bio?: string | null
           created_at?: string
           email?: string | null
+          favourite_game?: string | null
           id: string
+          in_game_name?: string | null
           is_banned?: boolean
+          phone?: string | null
           updated_at?: string
           wallet_balance?: number
         }
         Update: {
+          bio?: string | null
           created_at?: string
           email?: string | null
+          favourite_game?: string | null
           id?: string
+          in_game_name?: string | null
           is_banned?: boolean
+          phone?: string | null
           updated_at?: string
           wallet_balance?: number
         }

@@ -1,6 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+import { useRealtimeWallet } from '@/hooks/useRealtimeWallet';
+import { useRealtimeTournaments } from '@/hooks/useRealtimeTournaments';
 import Navbar from '@/components/Navbar';
 import StatCard from '@/components/StatCard';
 import { Wallet, Trophy, Target, TrendingUp, Calendar } from 'lucide-react';
@@ -17,60 +19,47 @@ interface DashboardStats {
 const Dashboard = () => {
   const { user } = useAuth();
   const [stats, setStats] = useState<DashboardStats>({
-    walletBalance: 0,
-    totalMatches: 0,
-    wins: 0,
-    totalEarnings: 0,
+    walletBalance: 0, totalMatches: 0, wins: 0, totalEarnings: 0,
   });
   const [upcomingTournaments, setUpcomingTournaments] = useState<any[]>([]);
 
-  useEffect(() => {
+  const loadStats = useCallback(async () => {
     if (!user) return;
+    const { data: profile } = await supabase.from('profiles').select('wallet_balance').eq('id', user.id).single();
+    const { data: participants } = await supabase.from('participants').select('id, placement').eq('user_id', user.id);
+    const { data: earnings } = await supabase.from('wallet_transactions').select('amount').eq('user_id', user.id).eq('type', 'prize');
+    const totalEarnings = earnings?.reduce((sum, t) => sum + Number(t.amount), 0) || 0;
+    setStats({
+      walletBalance: profile?.wallet_balance || 0,
+      totalMatches: participants?.length || 0,
+      wins: participants?.filter(p => p.placement === 1).length || 0,
+      totalEarnings,
+    });
+  }, [user]);
 
-    const loadStats = async () => {
-      // Get wallet balance
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('wallet_balance')
-        .eq('id', user.id)
-        .single();
+  const loadUpcoming = useCallback(async () => {
+    const { data } = await supabase
+      .from('tournaments')
+      .select('*, games(name, logo_url)')
+      .eq('status', 'upcoming')
+      .order('start_time', { ascending: true })
+      .limit(5);
+    setUpcomingTournaments(data || []);
+  }, []);
 
-      // Get match stats
-      const { data: participants } = await supabase
-        .from('participants')
-        .select('id, placement')
-        .eq('user_id', user.id);
-
-      // Get earnings
-      const { data: earnings } = await supabase
-        .from('wallet_transactions')
-        .select('amount')
-        .eq('user_id', user.id)
-        .eq('type', 'prize');
-
-      const totalEarnings = earnings?.reduce((sum, t) => sum + Number(t.amount), 0) || 0;
-
-      setStats({
-        walletBalance: profile?.wallet_balance || 0,
-        totalMatches: participants?.length || 0,
-        wins: participants?.filter(p => p.placement === 1).length || 0,
-        totalEarnings,
-      });
-    };
-
-    const loadUpcoming = async () => {
-      const { data } = await supabase
-        .from('tournaments')
-        .select('*, games(name, logo_url)')
-        .eq('status', 'upcoming')
-        .order('start_time', { ascending: true })
-        .limit(5);
-      setUpcomingTournaments(data || []);
-    };
-
+  const refresh = useCallback(() => {
     loadStats();
     loadUpcoming();
-  }, [user]);
+  }, [loadStats, loadUpcoming]);
+
+  useRealtimeWallet(user?.id, refresh);
+  useRealtimeTournaments(refresh);
+
+  useEffect(() => {
+    if (!user) return;
+    loadStats();
+    loadUpcoming();
+  }, [user, loadStats, loadUpcoming]);
 
   return (
     <div className="min-h-screen bg-background bg-grid">
@@ -121,7 +110,7 @@ const Dashboard = () => {
                     <span className="text-xs text-muted-foreground">
                       {t.slots_filled || 0}/{t.total_slots} slots
                     </span>
-                    <Link to={`/tournaments`}>
+                    <Link to="/tournaments">
                       <Button size="sm">Join</Button>
                     </Link>
                   </div>
