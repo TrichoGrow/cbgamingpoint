@@ -1,6 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+import { useRealtimeWallet } from '@/hooks/useRealtimeWallet';
+import { useRealtimeTournaments } from '@/hooks/useRealtimeTournaments';
 import Navbar from '@/components/Navbar';
 import StatCard from '@/components/StatCard';
 import { Wallet, Trophy, Target, TrendingUp, Calendar } from 'lucide-react';
@@ -23,6 +25,15 @@ const Dashboard = () => {
     totalEarnings: 0,
   });
   const [upcomingTournaments, setUpcomingTournaments] = useState<any[]>([]);
+
+  const refresh = useCallback(() => {
+    if (!user) return;
+    loadStats();
+    loadUpcoming();
+  }, [user]);
+
+  useRealtimeWallet(user?.id, refresh);
+  useRealtimeTournaments(refresh);
 
   useEffect(() => {
     if (!user) return;
