@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+import { useRealtimeWallet } from '@/hooks/useRealtimeWallet';
 import Navbar from '@/components/Navbar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -33,6 +34,9 @@ const WalletPage = () => {
   const [withdrawAmount, setWithdrawAmount] = useState('');
   const [withdrawUpi, setWithdrawUpi] = useState('');
   const [withdrawLoading, setWithdrawLoading] = useState(false);
+
+  const refreshData = useCallback(() => { loadData(); }, [user]);
+  useRealtimeWallet(user?.id, refreshData);
 
   useEffect(() => {
     if (!user) return;
