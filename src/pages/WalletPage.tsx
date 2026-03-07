@@ -136,7 +136,7 @@ const WalletPage = () => {
   };
 
   const copyUpi = () => {
-    navigator.clipboard.writeText(UPI_ID);
+    navigator.clipboard.writeText(upiId);
     toast.success('UPI ID copied!');
   };
 
@@ -186,7 +186,7 @@ const WalletPage = () => {
                   <div className="rounded-lg bg-background p-4 border border-primary/20">
                     <p className="text-xs text-muted-foreground mb-1">Send payment to UPI ID:</p>
                     <div className="flex items-center gap-2">
-                      <p className="font-display text-lg font-bold text-primary">{UPI_ID}</p>
+                      <p className="font-display text-lg font-bold text-primary">{upiId}</p>
                       <button onClick={copyUpi} className="text-muted-foreground hover:text-primary">
                         <Copy className="h-4 w-4" />
                       </button>
