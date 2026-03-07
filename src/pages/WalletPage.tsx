@@ -12,7 +12,6 @@ import { Wallet as WalletIcon, ArrowUpCircle, ArrowDownCircle, Copy, Upload, Che
 import StatCard from '@/components/StatCard';
 import { toast } from 'sonner';
 
-const UPI_ID = 'yourupiid@upi';
 const MIN_DEPOSIT = 50;
 const MIN_WITHDRAW = 100;
 
@@ -22,6 +21,7 @@ const WalletPage = () => {
   const [deposits, setDeposits] = useState<any[]>([]);
   const [withdrawals, setWithdrawals] = useState<any[]>([]);
   const [transactions, setTransactions] = useState<any[]>([]);
+  const [upiId, setUpiId] = useState('Loading...');
 
   // Deposit form
   const [depositAmount, setDepositAmount] = useState('');
@@ -56,6 +56,10 @@ const WalletPage = () => {
 
     const { data: txns } = await supabase.from('wallet_transactions').select('*').eq('user_id', user.id).order('created_at', { ascending: false }).limit(20);
     setTransactions(txns || []);
+
+    // Load UPI from settings
+    const { data: upiData } = await supabase.from('app_settings').select('value').eq('key', 'upi_id').maybeSingle();
+    setUpiId(upiData?.value || 'Not configured');
   };
 
   const handleDeposit = async (e: React.FormEvent) => {
@@ -132,7 +136,7 @@ const WalletPage = () => {
   };
 
   const copyUpi = () => {
-    navigator.clipboard.writeText(UPI_ID);
+    navigator.clipboard.writeText(upiId);
     toast.success('UPI ID copied!');
   };
 
@@ -182,7 +186,7 @@ const WalletPage = () => {
                   <div className="rounded-lg bg-background p-4 border border-primary/20">
                     <p className="text-xs text-muted-foreground mb-1">Send payment to UPI ID:</p>
                     <div className="flex items-center gap-2">
-                      <p className="font-display text-lg font-bold text-primary">{UPI_ID}</p>
+                      <p className="font-display text-lg font-bold text-primary">{upiId}</p>
                       <button onClick={copyUpi} className="text-muted-foreground hover:text-primary">
                         <Copy className="h-4 w-4" />
                       </button>

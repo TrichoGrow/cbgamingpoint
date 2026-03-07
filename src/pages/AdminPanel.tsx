@@ -9,9 +9,9 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import {
-  Users, Trophy, DollarSign, Gamepad2, Clock, CheckCircle, XCircle, Plus, Trash2, Edit, Eye, Shield, Image
+  Users, Trophy, DollarSign, Gamepad2, Clock, CheckCircle, XCircle, Plus, Trash2, Edit, Image, Shield, Settings
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -39,10 +39,13 @@ const AdminPanel = () => {
   const [editingTournament, setEditingTournament] = useState<any>(null);
   const [tournamentDialogOpen, setTournamentDialogOpen] = useState(false);
 
+  // UPI settings
+  const [upiId, setUpiId] = useState('');
+  const [upiLoading, setUpiLoading] = useState(false);
+
   useEffect(() => { loadAll(); }, []);
 
   const loadAll = async () => {
-    // Stats
     const { count: userCount } = await supabase.from('profiles').select('id', { count: 'exact', head: true });
     const { data: pendDep } = await supabase.from('deposit_requests').select('id').eq('status', 'pending');
     const { data: pendWith } = await supabase.from('withdraw_requests').select('id').eq('status', 'pending');
@@ -51,35 +54,49 @@ const AdminPanel = () => {
     const revenue = revData?.reduce((s, t) => s + Math.abs(Number(t.amount)), 0) || 0;
 
     setStats({
-      users: userCount || 0,
-      revenue,
+      users: userCount || 0, revenue,
       activeTournaments: activeTour?.length || 0,
       pendingDeposits: pendDep?.length || 0,
       pendingWithdrawals: pendWith?.length || 0,
     });
 
-    // Games
     const { data: gamesData } = await supabase.from('games').select('*').order('name');
     setGames(gamesData || []);
 
-    // Tournaments
     const { data: tourData } = await supabase.from('tournaments').select('*, games(name)').order('created_at', { ascending: false });
     setTournaments(tourData || []);
 
-    // Deposits
-    const { data: depData } = await supabase.from('deposit_requests').select('*, profiles(email:id)').order('created_at', { ascending: false });
+    const { data: depData } = await supabase.from('deposit_requests').select('*').order('created_at', { ascending: false });
     setDeposits(depData || []);
 
-    // Withdrawals
     const { data: withData } = await supabase.from('withdraw_requests').select('*').order('created_at', { ascending: false });
     setWithdrawals(withData || []);
 
-    // Users
     const { data: usersData } = await supabase.from('profiles').select('*').order('created_at', { ascending: false });
     setAllUsers(usersData || []);
+
+    // Load UPI
+    const { data: upiData } = await supabase.from('app_settings').select('value').eq('key', 'upi_id').maybeSingle();
+    setUpiId(upiData?.value || '');
   };
 
   // Game CRUD
+  const openAddGame = () => {
+    setEditingGame(null);
+    setGameName('');
+    setGameType('');
+    setGameLogo('');
+    setGameDialogOpen(true);
+  };
+
+  const openEditGame = (g: any) => {
+    setEditingGame(g);
+    setGameName(g.name);
+    setGameType(g.game_type || '');
+    setGameLogo(g.logo_url || '');
+    setGameDialogOpen(true);
+  };
+
   const saveGame = async () => {
     if (!gameName.trim()) { toast.error('Game name required'); return; }
     if (editingGame) {
@@ -90,7 +107,6 @@ const AdminPanel = () => {
       toast.success('Game added');
     }
     setGameDialogOpen(false);
-    setGameName(''); setGameType(''); setGameLogo(''); setEditingGame(null);
     loadAll();
   };
 
@@ -107,19 +123,30 @@ const AdminPanel = () => {
   };
 
   // Tournament CRUD
+  const openAddTournament = () => {
+    setEditingTournament(null);
+    setTournamentForm({ title: '', game_id: '', entry_fee: '0', prize_pool: '0', total_slots: '10', start_time: '', room_id: '', room_password: '' });
+    setTournamentDialogOpen(true);
+  };
+
+  const openEditTournament = (t: any) => {
+    setEditingTournament(t);
+    setTournamentForm({
+      title: t.title, game_id: t.game_id, entry_fee: String(t.entry_fee),
+      prize_pool: String(t.prize_pool), total_slots: String(t.total_slots),
+      start_time: t.start_time?.slice(0, 16) || '', room_id: t.room_id || '', room_password: t.room_password || '',
+    });
+    setTournamentDialogOpen(true);
+  };
+
   const saveTournament = async () => {
     const data = {
-      title: tournamentForm.title,
-      game_id: tournamentForm.game_id,
-      entry_fee: Number(tournamentForm.entry_fee),
-      prize_pool: Number(tournamentForm.prize_pool),
-      total_slots: Number(tournamentForm.total_slots),
-      start_time: tournamentForm.start_time,
-      room_id: tournamentForm.room_id || null,
-      room_password: tournamentForm.room_password || null,
+      title: tournamentForm.title, game_id: tournamentForm.game_id,
+      entry_fee: Number(tournamentForm.entry_fee), prize_pool: Number(tournamentForm.prize_pool),
+      total_slots: Number(tournamentForm.total_slots), start_time: tournamentForm.start_time,
+      room_id: tournamentForm.room_id || null, room_password: tournamentForm.room_password || null,
       status: 'upcoming',
     };
-
     if (editingTournament) {
       await supabase.from('tournaments').update(data).eq('id', editingTournament.id);
       toast.success('Tournament updated');
@@ -128,13 +155,10 @@ const AdminPanel = () => {
       toast.success('Tournament created');
     }
     setTournamentDialogOpen(false);
-    setTournamentForm({ title: '', game_id: '', entry_fee: '0', prize_pool: '0', total_slots: '10', start_time: '', room_id: '', room_password: '' });
-    setEditingTournament(null);
     loadAll();
   };
 
   const deleteTournament = async (t: any) => {
-    // Refund all participants
     const { data: parts } = await supabase.from('participants').select('user_id').eq('tournament_id', t.id);
     if (parts && t.entry_fee > 0) {
       for (const p of parts) {
@@ -190,9 +214,28 @@ const AdminPanel = () => {
 
   const getScreenshotUrl = async (path: string) => {
     const { data } = await supabase.storage.from('screenshots').createSignedUrl(path, 3600);
-    if (data?.signedUrl) {
-      window.open(data.signedUrl, '_blank');
-    }
+    if (data?.signedUrl) window.open(data.signedUrl, '_blank');
+  };
+
+  // UPI management
+  const saveUpi = async () => {
+    if (!upiId.trim()) { toast.error('UPI ID required'); return; }
+    setUpiLoading(true);
+    const { error } = await supabase.from('app_settings').upsert(
+      { key: 'upi_id', value: upiId.trim(), updated_at: new Date().toISOString() },
+      { onConflict: 'key' }
+    );
+    if (error) toast.error('Failed to save UPI');
+    else toast.success('UPI ID updated');
+    setUpiLoading(false);
+  };
+
+  const removeUpi = async () => {
+    setUpiLoading(true);
+    await supabase.from('app_settings').update({ value: '' }).eq('key', 'upi_id');
+    setUpiId('');
+    toast.success('UPI ID removed');
+    setUpiLoading(false);
   };
 
   return (
@@ -204,7 +247,6 @@ const AdminPanel = () => {
           Admin Panel
         </h1>
 
-        {/* Stats */}
         <div className="grid grid-cols-2 gap-3 md:grid-cols-5 mb-6">
           <StatCard title="Users" value={stats.users} icon={<Users className="h-5 w-5" />} />
           <StatCard title="Revenue" value={`₹${stats.revenue}`} icon={<DollarSign className="h-5 w-5" />} />
@@ -220,6 +262,7 @@ const AdminPanel = () => {
             <TabsTrigger value="tournaments" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Tournaments</TabsTrigger>
             <TabsTrigger value="games" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Games</TabsTrigger>
             <TabsTrigger value="users" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Users</TabsTrigger>
+            <TabsTrigger value="settings" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Settings</TabsTrigger>
           </TabsList>
 
           {/* Deposits Tab */}
@@ -287,42 +330,10 @@ const AdminPanel = () => {
           {/* Tournaments Tab */}
           <TabsContent value="tournaments">
             <div className="mb-4">
-              <Dialog open={tournamentDialogOpen} onOpenChange={setTournamentDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button className="gap-2" onClick={() => { setEditingTournament(null); setTournamentForm({ title: '', game_id: '', entry_fee: '0', prize_pool: '0', total_slots: '10', start_time: '', room_id: '', room_password: '' }); }}>
-                    <Plus className="h-4 w-4" /> Create Tournament
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="bg-card border-border max-h-[90vh] overflow-y-auto">
-                  <DialogHeader>
-                    <DialogTitle className="font-display text-foreground">{editingTournament ? 'Edit' : 'Create'} Tournament</DialogTitle>
-                  </DialogHeader>
-                  <div className="space-y-3">
-                    <div><Label className="text-foreground">Title</Label><Input value={tournamentForm.title} onChange={e => setTournamentForm(f => ({ ...f, title: e.target.value }))} className="mt-1 bg-background" /></div>
-                    <div><Label className="text-foreground">Game</Label>
-                      <Select value={tournamentForm.game_id} onValueChange={v => setTournamentForm(f => ({ ...f, game_id: v }))}>
-                        <SelectTrigger className="mt-1 bg-background"><SelectValue placeholder="Select game" /></SelectTrigger>
-                        <SelectContent>{games.filter(g => g.is_active).map(g => <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>)}</SelectContent>
-                      </Select>
-                    </div>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div><Label className="text-foreground">Entry Fee (₹)</Label><Input type="number" value={tournamentForm.entry_fee} onChange={e => setTournamentForm(f => ({ ...f, entry_fee: e.target.value }))} className="mt-1 bg-background" /></div>
-                      <div><Label className="text-foreground">Prize Pool (₹)</Label><Input type="number" value={tournamentForm.prize_pool} onChange={e => setTournamentForm(f => ({ ...f, prize_pool: e.target.value }))} className="mt-1 bg-background" /></div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div><Label className="text-foreground">Total Slots</Label><Input type="number" value={tournamentForm.total_slots} onChange={e => setTournamentForm(f => ({ ...f, total_slots: e.target.value }))} className="mt-1 bg-background" /></div>
-                      <div><Label className="text-foreground">Start Time</Label><Input type="datetime-local" value={tournamentForm.start_time} onChange={e => setTournamentForm(f => ({ ...f, start_time: e.target.value }))} className="mt-1 bg-background" /></div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div><Label className="text-foreground">Room ID</Label><Input value={tournamentForm.room_id} onChange={e => setTournamentForm(f => ({ ...f, room_id: e.target.value }))} className="mt-1 bg-background" placeholder="Set before match" /></div>
-                      <div><Label className="text-foreground">Room Password</Label><Input value={tournamentForm.room_password} onChange={e => setTournamentForm(f => ({ ...f, room_password: e.target.value }))} className="mt-1 bg-background" /></div>
-                    </div>
-                    <Button onClick={saveTournament} className="w-full">{editingTournament ? 'Update' : 'Create'} Tournament</Button>
-                  </div>
-                </DialogContent>
-              </Dialog>
+              <Button className="gap-2" onClick={openAddTournament}>
+                <Plus className="h-4 w-4" /> Create Tournament
+              </Button>
             </div>
-
             <div className="space-y-3">
               {tournaments.map(t => (
                 <div key={t.id} className="rounded-lg border border-border bg-card p-4">
@@ -334,46 +345,53 @@ const AdminPanel = () => {
                     </div>
                     <div className="flex items-center gap-2">
                       <Badge className="capitalize">{t.status}</Badge>
-                      <Button size="sm" variant="outline" onClick={() => {
-                        setEditingTournament(t);
-                        setTournamentForm({
-                          title: t.title, game_id: t.game_id, entry_fee: String(t.entry_fee),
-                          prize_pool: String(t.prize_pool), total_slots: String(t.total_slots),
-                          start_time: t.start_time?.slice(0, 16) || '', room_id: t.room_id || '', room_password: t.room_password || '',
-                        });
-                        setTournamentDialogOpen(true);
-                      }}><Edit className="h-4 w-4" /></Button>
+                      <Button size="sm" variant="outline" onClick={() => openEditTournament(t)}><Edit className="h-4 w-4" /></Button>
                       <Button size="sm" variant="destructive" onClick={() => deleteTournament(t)}><Trash2 className="h-4 w-4" /></Button>
                     </div>
                   </div>
                 </div>
               ))}
             </div>
+
+            <Dialog open={tournamentDialogOpen} onOpenChange={setTournamentDialogOpen}>
+              <DialogContent className="bg-card border-border max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle className="font-display text-foreground">{editingTournament ? 'Edit' : 'Create'} Tournament</DialogTitle>
+                  <DialogDescription>Fill in the tournament details below.</DialogDescription>
+                </DialogHeader>
+                <div className="space-y-3">
+                  <div><Label className="text-foreground">Title</Label><Input value={tournamentForm.title} onChange={e => setTournamentForm(f => ({ ...f, title: e.target.value }))} className="mt-1 bg-background" /></div>
+                  <div><Label className="text-foreground">Game</Label>
+                    <Select value={tournamentForm.game_id} onValueChange={v => setTournamentForm(f => ({ ...f, game_id: v }))}>
+                      <SelectTrigger className="mt-1 bg-background"><SelectValue placeholder="Select game" /></SelectTrigger>
+                      <SelectContent>{games.filter(g => g.is_active).map(g => <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>)}</SelectContent>
+                    </Select>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div><Label className="text-foreground">Entry Fee (₹)</Label><Input type="number" value={tournamentForm.entry_fee} onChange={e => setTournamentForm(f => ({ ...f, entry_fee: e.target.value }))} className="mt-1 bg-background" /></div>
+                    <div><Label className="text-foreground">Prize Pool (₹)</Label><Input type="number" value={tournamentForm.prize_pool} onChange={e => setTournamentForm(f => ({ ...f, prize_pool: e.target.value }))} className="mt-1 bg-background" /></div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div><Label className="text-foreground">Total Slots</Label><Input type="number" value={tournamentForm.total_slots} onChange={e => setTournamentForm(f => ({ ...f, total_slots: e.target.value }))} className="mt-1 bg-background" /></div>
+                    <div><Label className="text-foreground">Start Time</Label><Input type="datetime-local" value={tournamentForm.start_time} onChange={e => setTournamentForm(f => ({ ...f, start_time: e.target.value }))} className="mt-1 bg-background" /></div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div><Label className="text-foreground">Room ID</Label><Input value={tournamentForm.room_id} onChange={e => setTournamentForm(f => ({ ...f, room_id: e.target.value }))} className="mt-1 bg-background" placeholder="Set before match" /></div>
+                    <div><Label className="text-foreground">Room Password</Label><Input value={tournamentForm.room_password} onChange={e => setTournamentForm(f => ({ ...f, room_password: e.target.value }))} className="mt-1 bg-background" /></div>
+                  </div>
+                  <Button onClick={saveTournament} className="w-full">{editingTournament ? 'Update' : 'Create'} Tournament</Button>
+                </div>
+              </DialogContent>
+            </Dialog>
           </TabsContent>
 
           {/* Games Tab */}
           <TabsContent value="games">
             <div className="mb-4">
-              <Dialog open={gameDialogOpen} onOpenChange={setGameDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button className="gap-2" onClick={() => { setEditingGame(null); setGameName(''); setGameType(''); setGameLogo(''); }}>
-                    <Plus className="h-4 w-4" /> Add Game
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="bg-card border-border">
-                  <DialogHeader>
-                    <DialogTitle className="font-display text-foreground">{editingGame ? 'Edit' : 'Add'} Game</DialogTitle>
-                  </DialogHeader>
-                  <div className="space-y-3">
-                    <div><Label className="text-foreground">Game Name</Label><Input value={gameName} onChange={e => setGameName(e.target.value)} className="mt-1 bg-background" /></div>
-                    <div><Label className="text-foreground">Game Type</Label><Input value={gameType} onChange={e => setGameType(e.target.value)} className="mt-1 bg-background" placeholder="e.g. Battle Royale, FPS" /></div>
-                    <div><Label className="text-foreground">Logo URL</Label><Input value={gameLogo} onChange={e => setGameLogo(e.target.value)} className="mt-1 bg-background" placeholder="https://..." /></div>
-                    <Button onClick={saveGame} className="w-full">{editingGame ? 'Update' : 'Add'} Game</Button>
-                  </div>
-                </DialogContent>
-              </Dialog>
+              <Button className="gap-2" onClick={openAddGame}>
+                <Plus className="h-4 w-4" /> Add Game
+              </Button>
             </div>
-
             <div className="space-y-3">
               {games.map(g => (
                 <div key={g.id} className="flex items-center justify-between rounded-lg border border-border bg-card p-4">
@@ -387,15 +405,27 @@ const AdminPanel = () => {
                   <div className="flex items-center gap-2">
                     <Badge variant={g.is_active ? 'default' : 'secondary'}>{g.is_active ? 'Active' : 'Inactive'}</Badge>
                     <Button size="sm" variant="outline" onClick={() => toggleGame(g)}>{g.is_active ? 'Deactivate' : 'Activate'}</Button>
-                    <Button size="sm" variant="outline" onClick={() => {
-                      setEditingGame(g); setGameName(g.name); setGameType(g.game_type || ''); setGameLogo(g.logo_url || '');
-                      setGameDialogOpen(true);
-                    }}><Edit className="h-4 w-4" /></Button>
+                    <Button size="sm" variant="outline" onClick={() => openEditGame(g)}><Edit className="h-4 w-4" /></Button>
                     <Button size="sm" variant="destructive" onClick={() => deleteGame(g.id)}><Trash2 className="h-4 w-4" /></Button>
                   </div>
                 </div>
               ))}
             </div>
+
+            <Dialog open={gameDialogOpen} onOpenChange={setGameDialogOpen}>
+              <DialogContent className="bg-card border-border">
+                <DialogHeader>
+                  <DialogTitle className="font-display text-foreground">{editingGame ? 'Edit' : 'Add'} Game</DialogTitle>
+                  <DialogDescription>Enter the game details below.</DialogDescription>
+                </DialogHeader>
+                <div className="space-y-3">
+                  <div><Label className="text-foreground">Game Name</Label><Input value={gameName} onChange={e => setGameName(e.target.value)} className="mt-1 bg-background" /></div>
+                  <div><Label className="text-foreground">Game Type</Label><Input value={gameType} onChange={e => setGameType(e.target.value)} className="mt-1 bg-background" placeholder="e.g. Battle Royale, FPS" /></div>
+                  <div><Label className="text-foreground">Logo URL</Label><Input value={gameLogo} onChange={e => setGameLogo(e.target.value)} className="mt-1 bg-background" placeholder="https://..." /></div>
+                  <Button onClick={saveGame} className="w-full">{editingGame ? 'Update' : 'Add'} Game</Button>
+                </div>
+              </DialogContent>
+            </Dialog>
           </TabsContent>
 
           {/* Users Tab */}
@@ -418,6 +448,37 @@ const AdminPanel = () => {
                   </div>
                 </div>
               ))}
+            </div>
+          </TabsContent>
+
+          {/* Settings Tab */}
+          <TabsContent value="settings">
+            <div className="max-w-md space-y-6">
+              <div className="rounded-lg border border-border bg-card p-6">
+                <h3 className="font-display text-lg font-bold text-foreground mb-4 flex items-center gap-2">
+                  <Settings className="h-5 w-5 text-primary" /> UPI Settings
+                </h3>
+                <div className="space-y-4">
+                  <div>
+                    <Label className="text-foreground">Payment UPI ID</Label>
+                    <Input
+                      value={upiId}
+                      onChange={e => setUpiId(e.target.value)}
+                      className="mt-1 bg-background"
+                      placeholder="yourname@upi"
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">Users will send deposits to this UPI ID</p>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button onClick={saveUpi} disabled={upiLoading} className="flex-1">
+                      {upiLoading ? 'Saving...' : 'Save UPI'}
+                    </Button>
+                    <Button variant="destructive" onClick={removeUpi} disabled={upiLoading}>
+                      Remove
+                    </Button>
+                  </div>
+                </div>
+              </div>
             </div>
           </TabsContent>
         </Tabs>
