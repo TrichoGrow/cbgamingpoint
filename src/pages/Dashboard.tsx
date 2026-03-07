@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/integrations/supabase/client';
 import Navbar from '@/components/Navbar';
 import StatCard from '@/components/StatCard';
 import { Wallet, Trophy, Target, TrendingUp, Calendar } from 'lucide-react';
