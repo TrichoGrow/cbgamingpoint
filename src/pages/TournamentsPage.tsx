@@ -1,11 +1,12 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useRealtimeTournaments } from '@/hooks/useRealtimeTournaments';
 import Navbar from '@/components/Navbar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Trophy, Users, Clock, Search, Filter } from 'lucide-react';
+import { Trophy, Users, Clock, Search } from 'lucide-react';
 import { toast } from 'sonner';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
@@ -18,6 +19,13 @@ const TournamentsPage = () => {
   const [gameFilter, setGameFilter] = useState('all');
   const [typeFilter, setTypeFilter] = useState('all');
   const [joinedIds, setJoinedIds] = useState<Set<string>>(new Set());
+
+  const refreshTournaments = useCallback(() => {
+    loadTournaments();
+    if (user) loadJoined();
+  }, [user]);
+
+  useRealtimeTournaments(refreshTournaments);
 
   useEffect(() => {
     loadGames();
