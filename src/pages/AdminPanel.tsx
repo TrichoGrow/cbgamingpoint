@@ -360,7 +360,17 @@ const AdminPanel = () => {
                       <p className="text-xs text-muted-foreground">{new Date(t.start_time).toLocaleString()}</p>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Badge className="capitalize">{t.status}</Badge>
+                      <Select value={t.status} onValueChange={(value) => updateTournamentStatus(t.id, value)}>
+                        <SelectTrigger className="h-8 w-[140px] bg-background">
+                          <SelectValue placeholder="Status" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="upcoming">Upcoming</SelectItem>
+                          <SelectItem value="live">Live</SelectItem>
+                          <SelectItem value="completed">Completed</SelectItem>
+                          <SelectItem value="cancelled">Cancelled</SelectItem>
+                        </SelectContent>
+                      </Select>
                       <Button size="sm" variant="outline" onClick={() => openEditTournament(t)}><Edit className="h-4 w-4" /></Button>
                       <Button size="sm" variant="destructive" onClick={() => deleteTournament(t)}><Trash2 className="h-4 w-4" /></Button>
                     </div>
