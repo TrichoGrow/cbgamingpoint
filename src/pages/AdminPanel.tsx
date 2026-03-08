@@ -34,7 +34,7 @@ const AdminPanel = () => {
   // Tournament form
   const [tournamentForm, setTournamentForm] = useState({
     title: '', game_id: '', entry_fee: '0', prize_pool: '0', total_slots: '10',
-    start_time: '', room_id: '', room_password: '',
+    start_time: '', room_id: '', room_password: '', status: 'upcoming',
   });
   const [editingTournament, setEditingTournament] = useState<any>(null);
   const [tournamentDialogOpen, setTournamentDialogOpen] = useState(false);
@@ -125,7 +125,10 @@ const AdminPanel = () => {
   // Tournament CRUD
   const openAddTournament = () => {
     setEditingTournament(null);
-    setTournamentForm({ title: '', game_id: '', entry_fee: '0', prize_pool: '0', total_slots: '10', start_time: '', room_id: '', room_password: '' });
+    setTournamentForm({
+      title: '', game_id: '', entry_fee: '0', prize_pool: '0', total_slots: '10',
+      start_time: '', room_id: '', room_password: '', status: 'upcoming',
+    });
     setTournamentDialogOpen(true);
   };
 
@@ -135,18 +138,24 @@ const AdminPanel = () => {
       title: t.title, game_id: t.game_id, entry_fee: String(t.entry_fee),
       prize_pool: String(t.prize_pool), total_slots: String(t.total_slots),
       start_time: t.start_time?.slice(0, 16) || '', room_id: t.room_id || '', room_password: t.room_password || '',
+      status: t.status || 'upcoming',
     });
     setTournamentDialogOpen(true);
   };
 
   const saveTournament = async () => {
     const data = {
-      title: tournamentForm.title, game_id: tournamentForm.game_id,
-      entry_fee: Number(tournamentForm.entry_fee), prize_pool: Number(tournamentForm.prize_pool),
-      total_slots: Number(tournamentForm.total_slots), start_time: tournamentForm.start_time,
-      room_id: tournamentForm.room_id || null, room_password: tournamentForm.room_password || null,
-      status: 'upcoming',
+      title: tournamentForm.title,
+      game_id: tournamentForm.game_id,
+      entry_fee: Number(tournamentForm.entry_fee),
+      prize_pool: Number(tournamentForm.prize_pool),
+      total_slots: Number(tournamentForm.total_slots),
+      start_time: tournamentForm.start_time,
+      room_id: tournamentForm.room_id || null,
+      room_password: tournamentForm.room_password || null,
+      status: tournamentForm.status,
     };
+
     if (editingTournament) {
       await supabase.from('tournaments').update(data).eq('id', editingTournament.id);
       toast.success('Tournament updated');
@@ -154,7 +163,14 @@ const AdminPanel = () => {
       await supabase.from('tournaments').insert(data);
       toast.success('Tournament created');
     }
+
     setTournamentDialogOpen(false);
+    loadAll();
+  };
+
+  const updateTournamentStatus = async (tournamentId: string, status: string) => {
+    await supabase.from('tournaments').update({ status }).eq('id', tournamentId);
+    toast.success(`Tournament marked as ${status}`);
     loadAll();
   };
 
