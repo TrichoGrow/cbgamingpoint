@@ -405,6 +405,18 @@ const AdminPanel = () => {
                     <div><Label className="text-foreground">Room ID</Label><Input value={tournamentForm.room_id} onChange={e => setTournamentForm(f => ({ ...f, room_id: e.target.value }))} className="mt-1 bg-background" placeholder="Set before match" /></div>
                     <div><Label className="text-foreground">Room Password</Label><Input value={tournamentForm.room_password} onChange={e => setTournamentForm(f => ({ ...f, room_password: e.target.value }))} className="mt-1 bg-background" /></div>
                   </div>
+                  <div>
+                    <Label className="text-foreground">Status</Label>
+                    <Select value={tournamentForm.status} onValueChange={v => setTournamentForm(f => ({ ...f, status: v }))}>
+                      <SelectTrigger className="mt-1 bg-background"><SelectValue placeholder="Select status" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="upcoming">Upcoming</SelectItem>
+                        <SelectItem value="live">Live</SelectItem>
+                        <SelectItem value="completed">Completed</SelectItem>
+                        <SelectItem value="cancelled">Cancelled</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                   <Button onClick={saveTournament} className="w-full">{editingTournament ? 'Update' : 'Create'} Tournament</Button>
                 </div>
               </DialogContent>
