@@ -42,16 +42,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .eq('user_id', nextSession.user.id)
         .eq('role', 'admin')
         .maybeSingle()
-        .then(({ data }) => {
-          if (!isMounted) return;
-          setIsAdmin(!!data);
-          setLoading(false);
-        })
-        .catch(() => {
-          if (!isMounted) return;
-          setIsAdmin(false);
-          setLoading(false);
-        });
+        .then(
+          ({ data }) => {
+            if (!isMounted) return;
+            setIsAdmin(!!data);
+            setLoading(false);
+          },
+          () => {
+            if (!isMounted) return;
+            setIsAdmin(false);
+            setLoading(false);
+          }
+        );
     };
 
     void (async () => {
