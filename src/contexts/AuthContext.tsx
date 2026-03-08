@@ -54,13 +54,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         });
     };
 
-    supabase.auth
-      .getSession()
-      .then(({ data: { session: currentSession } }) => applySession(currentSession))
-      .catch(() => {
+    void (async () => {
+      try {
+        const { data: { session: currentSession } } = await supabase.auth.getSession();
+        applySession(currentSession);
+      } catch {
         if (!isMounted) return;
         setLoading(false);
-      });
+      }
+    })();
 
     const {
       data: { subscription },
