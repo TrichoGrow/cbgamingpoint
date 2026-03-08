@@ -34,7 +34,7 @@ const AdminPanel = () => {
   // Tournament form
   const [tournamentForm, setTournamentForm] = useState({
     title: '', game_id: '', entry_fee: '0', prize_pool: '0', total_slots: '10',
-    start_time: '', room_id: '', room_password: '',
+    start_time: '', room_id: '', room_password: '', status: 'upcoming',
   });
   const [editingTournament, setEditingTournament] = useState<any>(null);
   const [tournamentDialogOpen, setTournamentDialogOpen] = useState(false);
@@ -125,7 +125,10 @@ const AdminPanel = () => {
   // Tournament CRUD
   const openAddTournament = () => {
     setEditingTournament(null);
-    setTournamentForm({ title: '', game_id: '', entry_fee: '0', prize_pool: '0', total_slots: '10', start_time: '', room_id: '', room_password: '' });
+    setTournamentForm({
+      title: '', game_id: '', entry_fee: '0', prize_pool: '0', total_slots: '10',
+      start_time: '', room_id: '', room_password: '', status: 'upcoming',
+    });
     setTournamentDialogOpen(true);
   };
 
@@ -135,18 +138,24 @@ const AdminPanel = () => {
       title: t.title, game_id: t.game_id, entry_fee: String(t.entry_fee),
       prize_pool: String(t.prize_pool), total_slots: String(t.total_slots),
       start_time: t.start_time?.slice(0, 16) || '', room_id: t.room_id || '', room_password: t.room_password || '',
+      status: t.status || 'upcoming',
     });
     setTournamentDialogOpen(true);
   };
 
   const saveTournament = async () => {
     const data = {
-      title: tournamentForm.title, game_id: tournamentForm.game_id,
-      entry_fee: Number(tournamentForm.entry_fee), prize_pool: Number(tournamentForm.prize_pool),
-      total_slots: Number(tournamentForm.total_slots), start_time: tournamentForm.start_time,
-      room_id: tournamentForm.room_id || null, room_password: tournamentForm.room_password || null,
-      status: 'upcoming',
+      title: tournamentForm.title,
+      game_id: tournamentForm.game_id,
+      entry_fee: Number(tournamentForm.entry_fee),
+      prize_pool: Number(tournamentForm.prize_pool),
+      total_slots: Number(tournamentForm.total_slots),
+      start_time: tournamentForm.start_time,
+      room_id: tournamentForm.room_id || null,
+      room_password: tournamentForm.room_password || null,
+      status: tournamentForm.status,
     };
+
     if (editingTournament) {
       await supabase.from('tournaments').update(data).eq('id', editingTournament.id);
       toast.success('Tournament updated');
@@ -154,7 +163,14 @@ const AdminPanel = () => {
       await supabase.from('tournaments').insert(data);
       toast.success('Tournament created');
     }
+
     setTournamentDialogOpen(false);
+    loadAll();
+  };
+
+  const updateTournamentStatus = async (tournamentId: string, status: string) => {
+    await supabase.from('tournaments').update({ status }).eq('id', tournamentId);
+    toast.success(`Tournament marked as ${status}`);
     loadAll();
   };
 
@@ -344,7 +360,17 @@ const AdminPanel = () => {
                       <p className="text-xs text-muted-foreground">{new Date(t.start_time).toLocaleString()}</p>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Badge className="capitalize">{t.status}</Badge>
+                      <Select value={t.status} onValueChange={(value) => updateTournamentStatus(t.id, value)}>
+                        <SelectTrigger className="h-8 w-[140px] bg-background">
+                          <SelectValue placeholder="Status" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="upcoming">Upcoming</SelectItem>
+                          <SelectItem value="live">Live</SelectItem>
+                          <SelectItem value="completed">Completed</SelectItem>
+                          <SelectItem value="cancelled">Cancelled</SelectItem>
+                        </SelectContent>
+                      </Select>
                       <Button size="sm" variant="outline" onClick={() => openEditTournament(t)}><Edit className="h-4 w-4" /></Button>
                       <Button size="sm" variant="destructive" onClick={() => deleteTournament(t)}><Trash2 className="h-4 w-4" /></Button>
                     </div>
@@ -378,6 +404,18 @@ const AdminPanel = () => {
                   <div className="grid grid-cols-2 gap-3">
                     <div><Label className="text-foreground">Room ID</Label><Input value={tournamentForm.room_id} onChange={e => setTournamentForm(f => ({ ...f, room_id: e.target.value }))} className="mt-1 bg-background" placeholder="Set before match" /></div>
                     <div><Label className="text-foreground">Room Password</Label><Input value={tournamentForm.room_password} onChange={e => setTournamentForm(f => ({ ...f, room_password: e.target.value }))} className="mt-1 bg-background" /></div>
+                  </div>
+                  <div>
+                    <Label className="text-foreground">Status</Label>
+                    <Select value={tournamentForm.status} onValueChange={v => setTournamentForm(f => ({ ...f, status: v }))}>
+                      <SelectTrigger className="mt-1 bg-background"><SelectValue placeholder="Select status" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="upcoming">Upcoming</SelectItem>
+                        <SelectItem value="live">Live</SelectItem>
+                        <SelectItem value="completed">Completed</SelectItem>
+                        <SelectItem value="cancelled">Cancelled</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                   <Button onClick={saveTournament} className="w-full">{editingTournament ? 'Update' : 'Create'} Tournament</Button>
                 </div>
