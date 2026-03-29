@@ -430,6 +430,10 @@ const AdminPanel = () => {
           <StatCard title="Withdrawals" value={stats.pendingWithdrawals} icon={<Clock className="h-5 w-5" />} />
         </div>
 
+        <div className="mb-6">
+          <AdminActivityFeed />
+        </div>
+
         <Tabs defaultValue="deposits" className="space-y-4">
           <TabsList className="bg-card border border-border flex-wrap h-auto gap-1 p-1">
             <TabsTrigger value="deposits" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Deposits</TabsTrigger>
