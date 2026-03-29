@@ -43,41 +43,74 @@ const AdminPanel = () => {
   const [upiId, setUpiId] = useState('');
   const [upiLoading, setUpiLoading] = useState(false);
 
-  useEffect(() => { loadAll(); }, []);
+  useEffect(() => {
+    if (!user) return;
+    void loadAll();
+  }, [user]);
 
   const loadAll = async () => {
-    const { count: userCount } = await supabase.from('profiles').select('id', { count: 'exact', head: true });
-    const { data: pendDep } = await supabase.from('deposit_requests').select('id').eq('status', 'pending');
-    const { data: pendWith } = await supabase.from('withdraw_requests').select('id').eq('status', 'pending');
-    const { data: activeTour } = await supabase.from('tournaments').select('id').in('status', ['upcoming', 'live']);
-    const { data: revData } = await supabase.from('wallet_transactions').select('amount').eq('type', 'entry_fee');
-    const revenue = revData?.reduce((s, t) => s + Math.abs(Number(t.amount)), 0) || 0;
+    if (!user) return;
+
+    const [
+      userCountRes,
+      pendDepRes,
+      pendWithRes,
+      activeTourRes,
+      revRes,
+      gamesRes,
+      tourRes,
+      depRes,
+      withRes,
+      usersRes,
+      upiRes,
+    ] = await Promise.all([
+      supabase.from('profiles').select('id', { count: 'exact', head: true }),
+      supabase.from('deposit_requests').select('id').eq('status', 'pending'),
+      supabase.from('withdraw_requests').select('id').eq('status', 'pending'),
+      supabase.from('tournaments').select('id').in('status', ['upcoming', 'live']),
+      supabase.from('wallet_transactions').select('amount').eq('type', 'entry_fee'),
+      supabase.from('games').select('*').order('name'),
+      supabase.from('tournaments').select('*, games(name)').order('created_at', { ascending: false }),
+      supabase.from('deposit_requests').select('*').order('created_at', { ascending: false }),
+      supabase.from('withdraw_requests').select('*').order('created_at', { ascending: false }),
+      supabase.from('profiles').select('*').order('created_at', { ascending: false }),
+      supabase.from('app_settings').select('value').eq('key', 'upi_id').maybeSingle(),
+    ]);
+
+    const errors = [
+      userCountRes.error,
+      pendDepRes.error,
+      pendWithRes.error,
+      activeTourRes.error,
+      revRes.error,
+      gamesRes.error,
+      tourRes.error,
+      depRes.error,
+      withRes.error,
+      usersRes.error,
+      upiRes.error,
+    ].filter(Boolean);
+
+    if (errors.length > 0) {
+      toast.error(errors[0]?.message || 'Failed to load admin data');
+    }
+
+    const revenue = revRes.data?.reduce((s, t) => s + Math.abs(Number(t.amount)), 0) || 0;
 
     setStats({
-      users: userCount || 0, revenue,
-      activeTournaments: activeTour?.length || 0,
-      pendingDeposits: pendDep?.length || 0,
-      pendingWithdrawals: pendWith?.length || 0,
+      users: userCountRes.count || 0,
+      revenue,
+      activeTournaments: activeTourRes.data?.length || 0,
+      pendingDeposits: pendDepRes.data?.length || 0,
+      pendingWithdrawals: pendWithRes.data?.length || 0,
     });
 
-    const { data: gamesData } = await supabase.from('games').select('*').order('name');
-    setGames(gamesData || []);
-
-    const { data: tourData } = await supabase.from('tournaments').select('*, games(name)').order('created_at', { ascending: false });
-    setTournaments(tourData || []);
-
-    const { data: depData } = await supabase.from('deposit_requests').select('*').order('created_at', { ascending: false });
-    setDeposits(depData || []);
-
-    const { data: withData } = await supabase.from('withdraw_requests').select('*').order('created_at', { ascending: false });
-    setWithdrawals(withData || []);
-
-    const { data: usersData } = await supabase.from('profiles').select('*').order('created_at', { ascending: false });
-    setAllUsers(usersData || []);
-
-    // Load UPI
-    const { data: upiData } = await supabase.from('app_settings').select('value').eq('key', 'upi_id').maybeSingle();
-    setUpiId(upiData?.value || '');
+    setGames(gamesRes.data || []);
+    setTournaments(tourRes.data || []);
+    setDeposits(depRes.data || []);
+    setWithdrawals(withRes.data || []);
+    setAllUsers(usersRes.data || []);
+    setUpiId(upiRes.data?.value || '');
   };
 
   // Game CRUD
@@ -99,27 +132,39 @@ const AdminPanel = () => {
 
   const saveGame = async () => {
     if (!gameName.trim()) { toast.error('Game name required'); return; }
-    if (editingGame) {
-      await supabase.from('games').update({ name: gameName, game_type: gameType, logo_url: gameLogo }).eq('id', editingGame.id);
-      toast.success('Game updated');
-    } else {
-      await supabase.from('games').insert({ name: gameName, game_type: gameType, logo_url: gameLogo, is_active: true });
-      toast.success('Game added');
+    const payload = { name: gameName.trim(), game_type: gameType.trim() || null, logo_url: gameLogo.trim() || null };
+    const { error } = editingGame
+      ? await supabase.from('games').update(payload).eq('id', editingGame.id)
+      : await supabase.from('games').insert({ ...payload, is_active: true });
+
+    if (error) {
+      toast.error(error.message || 'Failed to save game');
+      return;
     }
+
+    toast.success(editingGame ? 'Game updated' : 'Game added');
     setGameDialogOpen(false);
-    loadAll();
+    void loadAll();
   };
 
   const toggleGame = async (game: any) => {
-    await supabase.from('games').update({ is_active: !game.is_active }).eq('id', game.id);
+    const { error } = await supabase.from('games').update({ is_active: !game.is_active }).eq('id', game.id);
+    if (error) {
+      toast.error(error.message || 'Failed to update game');
+      return;
+    }
     toast.success(game.is_active ? 'Game deactivated' : 'Game activated');
-    loadAll();
+    void loadAll();
   };
 
   const deleteGame = async (id: string) => {
-    await supabase.from('games').delete().eq('id', id);
+    const { error } = await supabase.from('games').delete().eq('id', id);
+    if (error) {
+      toast.error(error.message || 'Failed to remove game');
+      return;
+    }
     toast.success('Game removed');
-    loadAll();
+    void loadAll();
   };
 
   // Tournament CRUD
@@ -144,88 +189,180 @@ const AdminPanel = () => {
   };
 
   const saveTournament = async () => {
+    if (!tournamentForm.title.trim() || !tournamentForm.game_id || !tournamentForm.start_time) {
+      toast.error('Title, game and start time are required');
+      return;
+    }
+
     const data = {
-      title: tournamentForm.title,
+      title: tournamentForm.title.trim(),
       game_id: tournamentForm.game_id,
       entry_fee: Number(tournamentForm.entry_fee),
       prize_pool: Number(tournamentForm.prize_pool),
       total_slots: Number(tournamentForm.total_slots),
-      start_time: tournamentForm.start_time,
-      room_id: tournamentForm.room_id || null,
-      room_password: tournamentForm.room_password || null,
+      start_time: new Date(tournamentForm.start_time).toISOString(),
+      room_id: tournamentForm.room_id.trim() || null,
+      room_password: tournamentForm.room_password.trim() || null,
       status: tournamentForm.status,
     };
 
-    if (editingTournament) {
-      await supabase.from('tournaments').update(data).eq('id', editingTournament.id);
-      toast.success('Tournament updated');
-    } else {
-      await supabase.from('tournaments').insert(data);
-      toast.success('Tournament created');
+    const { error } = editingTournament
+      ? await supabase.from('tournaments').update(data).eq('id', editingTournament.id)
+      : await supabase.from('tournaments').insert(data);
+
+    if (error) {
+      toast.error(error.message || 'Failed to save tournament');
+      return;
     }
 
+    toast.success(editingTournament ? 'Tournament updated' : 'Tournament created');
+
     setTournamentDialogOpen(false);
-    loadAll();
+    void loadAll();
   };
 
   const updateTournamentStatus = async (tournamentId: string, status: string) => {
-    await supabase.from('tournaments').update({ status }).eq('id', tournamentId);
+    const { error } = await supabase.from('tournaments').update({ status }).eq('id', tournamentId);
+    if (error) {
+      toast.error(error.message || 'Failed to update tournament status');
+      return;
+    }
     toast.success(`Tournament marked as ${status}`);
-    loadAll();
+    void loadAll();
   };
 
   const deleteTournament = async (t: any) => {
-    const { data: parts } = await supabase.from('participants').select('user_id').eq('tournament_id', t.id);
+    const { data: parts, error: partsError } = await supabase.from('participants').select('user_id').eq('tournament_id', t.id);
+    if (partsError) {
+      toast.error(partsError.message || 'Failed to load participants');
+      return;
+    }
+
     if (parts && t.entry_fee > 0) {
       for (const p of parts) {
-        const { data: profile } = await supabase.from('profiles').select('wallet_balance').eq('id', p.user_id).single();
-        await supabase.from('profiles').update({ wallet_balance: (profile?.wallet_balance || 0) + t.entry_fee }).eq('id', p.user_id);
-        await supabase.from('wallet_transactions').insert({
+        const { data: profile, error: profileError } = await supabase.from('profiles').select('wallet_balance').eq('id', p.user_id).single();
+        if (profileError) {
+          toast.error(profileError.message || 'Failed to refund player');
+          return;
+        }
+
+        const { error: balanceError } = await supabase.from('profiles').update({ wallet_balance: (profile?.wallet_balance || 0) + t.entry_fee }).eq('id', p.user_id);
+        if (balanceError) {
+          toast.error(balanceError.message || 'Failed to refund player');
+          return;
+        }
+
+        const { error: transactionError } = await supabase.from('wallet_transactions').insert({
           user_id: p.user_id, amount: t.entry_fee, type: 'refund',
           description: `Refund for cancelled tournament: ${t.title}`, reference_id: t.id,
         });
+        if (transactionError) {
+          toast.error(transactionError.message || 'Failed to log refund');
+          return;
+        }
       }
     }
-    await supabase.from('participants').delete().eq('tournament_id', t.id);
-    await supabase.from('tournaments').delete().eq('id', t.id);
+
+    const { error: participantsDeleteError } = await supabase.from('participants').delete().eq('tournament_id', t.id);
+    if (participantsDeleteError) {
+      toast.error(participantsDeleteError.message || 'Failed to remove tournament participants');
+      return;
+    }
+
+    const { error: tournamentDeleteError } = await supabase.from('tournaments').delete().eq('id', t.id);
+    if (tournamentDeleteError) {
+      toast.error(tournamentDeleteError.message || 'Failed to delete tournament');
+      return;
+    }
+
     toast.success('Tournament cancelled & refunds issued');
-    loadAll();
+    void loadAll();
   };
 
   // Deposit approval
   const handleDeposit = async (dep: any, action: 'approved' | 'rejected') => {
-    await supabase.from('deposit_requests').update({ status: action }).eq('id', dep.id);
+    const { error: depositError } = await supabase.from('deposit_requests').update({ status: action }).eq('id', dep.id);
+    if (depositError) {
+      toast.error(depositError.message || 'Failed to update deposit');
+      return;
+    }
+
     if (action === 'approved') {
-      const { data: profile } = await supabase.from('profiles').select('wallet_balance').eq('id', dep.user_id).single();
-      await supabase.from('profiles').update({ wallet_balance: (profile?.wallet_balance || 0) + dep.amount }).eq('id', dep.user_id);
-      await supabase.from('wallet_transactions').insert({
+      const { data: profile, error: profileError } = await supabase.from('profiles').select('wallet_balance').eq('id', dep.user_id).single();
+      if (profileError) {
+        toast.error(profileError.message || 'Failed to load user balance');
+        return;
+      }
+
+      const { error: balanceError } = await supabase.from('profiles').update({ wallet_balance: (profile?.wallet_balance || 0) + dep.amount }).eq('id', dep.user_id);
+      if (balanceError) {
+        toast.error(balanceError.message || 'Failed to credit wallet');
+        return;
+      }
+
+      const { error: transactionError } = await supabase.from('wallet_transactions').insert({
         user_id: dep.user_id, amount: dep.amount, type: 'deposit',
         description: `Deposit approved (UTR: ${dep.utr_number})`, reference_id: dep.id,
       });
+      if (transactionError) {
+        toast.error(transactionError.message || 'Failed to log deposit');
+        return;
+      }
     }
-    await supabase.from('admin_logs').insert({
+
+    const { error: logError } = await supabase.from('admin_logs').insert({
       admin_id: user!.id, action: `${action}_deposit`, details: { deposit_id: dep.id, amount: dep.amount },
     });
+    if (logError) {
+      toast.error(logError.message || 'Failed to log admin action');
+      return;
+    }
+
     toast.success(`Deposit ${action}`);
-    loadAll();
+    void loadAll();
   };
 
   // Withdraw approval
   const handleWithdraw = async (w: any, action: 'approved' | 'rejected') => {
-    await supabase.from('withdraw_requests').update({ status: action }).eq('id', w.id);
+    const { error: withdrawalError } = await supabase.from('withdraw_requests').update({ status: action }).eq('id', w.id);
+    if (withdrawalError) {
+      toast.error(withdrawalError.message || 'Failed to update withdrawal');
+      return;
+    }
+
     if (action === 'approved') {
-      const { data: profile } = await supabase.from('profiles').select('wallet_balance').eq('id', w.user_id).single();
-      await supabase.from('profiles').update({ wallet_balance: Math.max(0, (profile?.wallet_balance || 0) - w.amount) }).eq('id', w.user_id);
-      await supabase.from('wallet_transactions').insert({
+      const { data: profile, error: profileError } = await supabase.from('profiles').select('wallet_balance').eq('id', w.user_id).single();
+      if (profileError) {
+        toast.error(profileError.message || 'Failed to load user balance');
+        return;
+      }
+
+      const { error: balanceError } = await supabase.from('profiles').update({ wallet_balance: Math.max(0, (profile?.wallet_balance || 0) - w.amount) }).eq('id', w.user_id);
+      if (balanceError) {
+        toast.error(balanceError.message || 'Failed to deduct wallet');
+        return;
+      }
+
+      const { error: transactionError } = await supabase.from('wallet_transactions').insert({
         user_id: w.user_id, amount: -w.amount, type: 'withdrawal',
         description: `Withdrawal to ${w.upi_id}`, reference_id: w.id,
       });
+      if (transactionError) {
+        toast.error(transactionError.message || 'Failed to log withdrawal');
+        return;
+      }
     }
-    await supabase.from('admin_logs').insert({
+
+    const { error: logError } = await supabase.from('admin_logs').insert({
       admin_id: user!.id, action: `${action}_withdrawal`, details: { withdraw_id: w.id, amount: w.amount },
     });
+    if (logError) {
+      toast.error(logError.message || 'Failed to log admin action');
+      return;
+    }
+
     toast.success(`Withdrawal ${action}`);
-    loadAll();
+    void loadAll();
   };
 
   const getScreenshotUrl = async (path: string) => {
@@ -242,15 +379,24 @@ const AdminPanel = () => {
       { onConflict: 'key' }
     );
     if (error) toast.error('Failed to save UPI');
-    else toast.success('UPI ID updated');
+    else {
+      toast.success('UPI ID updated');
+      void loadAll();
+    }
     setUpiLoading(false);
   };
 
   const removeUpi = async () => {
     setUpiLoading(true);
-    await supabase.from('app_settings').update({ value: '' }).eq('key', 'upi_id');
+    const { error } = await supabase.from('app_settings').update({ value: '' }).eq('key', 'upi_id');
+    if (error) {
+      toast.error(error.message || 'Failed to remove UPI');
+      setUpiLoading(false);
+      return;
+    }
     setUpiId('');
     toast.success('UPI ID removed');
+    void loadAll();
     setUpiLoading(false);
   };
 
