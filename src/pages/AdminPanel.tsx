@@ -14,6 +14,7 @@ import {
   Users, Trophy, DollarSign, Gamepad2, Clock, CheckCircle, XCircle, Plus, Trash2, Edit, Image, Shield, Settings
 } from 'lucide-react';
 import { toast } from 'sonner';
+import AdminActivityFeed from '@/components/AdminActivityFeed';
 
 const AdminPanel = () => {
   const { user } = useAuth();
@@ -46,6 +47,18 @@ const AdminPanel = () => {
   useEffect(() => {
     if (!user) return;
     void loadAll();
+
+    // Realtime subscriptions for auto-refresh
+    const channel = supabase
+      .channel('admin-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'deposit_requests' }, () => loadAll())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'withdraw_requests' }, () => loadAll())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'tournaments' }, () => loadAll())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => loadAll())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'games' }, () => loadAll())
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
   }, [user]);
 
   const loadAll = async () => {
@@ -415,6 +428,10 @@ const AdminPanel = () => {
           <StatCard title="Active" value={stats.activeTournaments} icon={<Trophy className="h-5 w-5" />} />
           <StatCard title="Deposits" value={stats.pendingDeposits} icon={<Clock className="h-5 w-5" />} />
           <StatCard title="Withdrawals" value={stats.pendingWithdrawals} icon={<Clock className="h-5 w-5" />} />
+        </div>
+
+        <div className="mb-6">
+          <AdminActivityFeed />
         </div>
 
         <Tabs defaultValue="deposits" className="space-y-4">
