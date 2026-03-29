@@ -78,8 +78,8 @@ const WalletPage = () => {
       if (existing) { toast.error('This UTR number has already been used'); setDepositLoading(false); return; }
 
       // Upload screenshot
-      const fileExt = screenshot.name.split('.').pop();
-      const filePath = `deposits/${user.id}/${Date.now()}.${fileExt}`;
+      const fileExt = screenshot.name.split('.').pop() || 'jpg';
+      const filePath = `${user.id}/deposits/${Date.now()}.${fileExt}`;
       const { error: uploadError } = await supabase.storage.from('screenshots').upload(filePath, screenshot);
       if (uploadError) throw uploadError;
 
