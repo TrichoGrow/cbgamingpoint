@@ -47,6 +47,18 @@ const AdminPanel = () => {
   useEffect(() => {
     if (!user) return;
     void loadAll();
+
+    // Realtime subscriptions for auto-refresh
+    const channel = supabase
+      .channel('admin-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'deposit_requests' }, () => loadAll())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'withdraw_requests' }, () => loadAll())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'tournaments' }, () => loadAll())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => loadAll())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'games' }, () => loadAll())
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
   }, [user]);
 
   const loadAll = async () => {
