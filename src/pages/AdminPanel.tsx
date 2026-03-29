@@ -14,6 +14,7 @@ import {
   Users, Trophy, DollarSign, Gamepad2, Clock, CheckCircle, XCircle, Plus, Trash2, Edit, Image, Shield, Settings
 } from 'lucide-react';
 import { toast } from 'sonner';
+import AdminActivityFeed from '@/components/AdminActivityFeed';
 
 const AdminPanel = () => {
   const { user } = useAuth();
