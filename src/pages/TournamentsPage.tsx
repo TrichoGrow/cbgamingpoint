@@ -198,17 +198,31 @@ const TournamentsPage = () => {
                     <Clock className="h-3 w-3 ml-2" />
                     {new Date(t.start_time).toLocaleDateString()}
                   </div>
-                  {joinedIds.has(t.id) ? (
-                    <Badge variant="secondary">Joined</Badge>
-                  ) : (t.slots_filled || 0) >= t.total_slots ? (
-                    <Badge variant="secondary">Full</Badge>
-                  ) : (
-                    <Button size="sm" onClick={() => joinTournament(t)}>Join Now</Button>
-                  )}
+                  <div className="flex items-center gap-2">
+                    <Button size="sm" variant="outline" onClick={() => setViewParticipants(t)} className="gap-1 text-xs">
+                      <Users className="h-3 w-3" /> View
+                    </Button>
+                    {joinedIds.has(t.id) ? (
+                      <Badge variant="secondary">Joined</Badge>
+                    ) : (t.slots_filled || 0) >= t.total_slots ? (
+                      <Badge variant="secondary">Full</Badge>
+                    ) : (
+                      <Button size="sm" onClick={() => joinTournament(t)}>Join Now</Button>
+                    )}
+                  </div>
                 </div>
               </div>
             ))}
           </div>
+        )}
+
+        {viewParticipants && (
+          <TournamentParticipants
+            tournamentId={viewParticipants.id}
+            tournamentTitle={viewParticipants.title}
+            open={!!viewParticipants}
+            onOpenChange={(open) => !open && setViewParticipants(null)}
+          />
         )}
       </div>
       <FloatingSupport />
