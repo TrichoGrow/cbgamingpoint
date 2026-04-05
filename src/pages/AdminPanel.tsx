@@ -759,6 +759,14 @@ const AdminPanel = () => {
                 </div>
               </DialogContent>
             </Dialog>
+            {viewAdminParticipants && (
+              <TournamentParticipants
+                tournamentId={viewAdminParticipants.id}
+                tournamentTitle={viewAdminParticipants.title}
+                open={!!viewAdminParticipants}
+                onOpenChange={(open) => !open && setViewAdminParticipants(null)}
+              />
+            )}
           </TabsContent>
 
           {/* Games Tab */}
