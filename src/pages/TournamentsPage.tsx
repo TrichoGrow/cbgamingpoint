@@ -21,6 +21,7 @@ const TournamentsPage = () => {
   const [gameFilter, setGameFilter] = useState('all');
   const [typeFilter, setTypeFilter] = useState('all');
   const [joinedIds, setJoinedIds] = useState<Set<string>>(new Set());
+  const [viewParticipants, setViewParticipants] = useState<any>(null);
 
   const refreshTournaments = useCallback(() => {
     loadTournaments();
