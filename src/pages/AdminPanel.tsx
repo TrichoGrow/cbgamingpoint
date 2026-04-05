@@ -677,6 +677,33 @@ const AdminPanel = () => {
                 </div>
               </DialogContent>
             </Dialog>
+            {/* Winner Declaration Dialog */}
+            <Dialog open={winnerDialogOpen} onOpenChange={setWinnerDialogOpen}>
+              <DialogContent className="bg-card border-border">
+                <DialogHeader>
+                  <DialogTitle className="font-display text-foreground">Declare Winner</DialogTitle>
+                  <DialogDescription>Select the winner for {selectedTournamentForWinner?.title}</DialogDescription>
+                </DialogHeader>
+                <div className="space-y-3">
+                  <div>
+                    <Label className="text-foreground">Winner</Label>
+                    <Select value={selectedWinnerId} onValueChange={setSelectedWinnerId}>
+                      <SelectTrigger className="mt-1 bg-background"><SelectValue placeholder="Select winner" /></SelectTrigger>
+                      <SelectContent>
+                        {tournamentParticipants.map(p => (
+                          <SelectItem key={p.id} value={p.id}>{p.in_game_name || p.email || p.id.slice(0, 8)}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label className="text-foreground">Prize Amount (₹)</Label>
+                    <Input type="number" value={prizeAmount} onChange={e => setPrizeAmount(e.target.value)} className="mt-1 bg-background" />
+                  </div>
+                  <Button onClick={declareWinner} className="w-full gap-2"><Medal className="h-4 w-4" /> Declare Winner & Credit Prize</Button>
+                </div>
+              </DialogContent>
+            </Dialog>
           </TabsContent>
 
           {/* Games Tab */}
