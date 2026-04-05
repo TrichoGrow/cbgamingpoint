@@ -427,6 +427,84 @@ const AdminPanel = () => {
     setUpiLoading(false);
   };
 
+  // Winner declaration
+  const openWinnerDialog = async (tournament: any) => {
+    setSelectedTournamentForWinner(tournament);
+    setPrizeAmount(String(tournament.prize_pool));
+    setSelectedWinnerId('');
+    const { data } = await supabase
+      .from('participants')
+      .select('user_id')
+      .eq('tournament_id', tournament.id);
+    // Fetch profile info for each participant
+    const userIds = data?.map(p => p.user_id) || [];
+    const { data: profiles } = await supabase.from('profiles').select('id, email, in_game_name').in('id', userIds);
+    setTournamentParticipants(profiles || []);
+    setWinnerDialogOpen(true);
+  };
+
+  const declareWinner = async () => {
+    if (!selectedWinnerId || !selectedTournamentForWinner) { toast.error('Select a winner'); return; }
+    const prize = Number(prizeAmount);
+    if (prize <= 0) { toast.error('Enter valid prize amount'); return; }
+
+    // Update participant placement
+    await supabase.from('participants').update({ placement: 1 }).eq('tournament_id', selectedTournamentForWinner.id).eq('user_id', selectedWinnerId);
+
+    // Credit prize to winner wallet
+    const { data: profile } = await supabase.from('profiles').select('wallet_balance').eq('id', selectedWinnerId).single();
+    await supabase.from('profiles').update({ wallet_balance: (profile?.wallet_balance || 0) + prize }).eq('id', selectedWinnerId);
+
+    // Record transaction
+    await supabase.from('wallet_transactions').insert({
+      user_id: selectedWinnerId, amount: prize, type: 'prize',
+      description: `Prize for winning ${selectedTournamentForWinner.title}`, reference_id: selectedTournamentForWinner.id,
+    });
+
+    // Update tournament status
+    await supabase.from('tournaments').update({ status: 'completed' }).eq('id', selectedTournamentForWinner.id);
+
+    // Log admin action
+    await supabase.from('admin_logs').insert({
+      admin_id: user!.id, action: 'declared_winner',
+      details: { tournament_id: selectedTournamentForWinner.id, winner_id: selectedWinnerId, prize },
+    });
+
+    toast.success('Winner declared & prize credited!');
+    setWinnerDialogOpen(false);
+    void loadAll();
+  };
+
+  // User wallet adjustment
+  const openWalletAdjust = (u: any) => {
+    setAdjustUser(u);
+    setAdjustAmount('');
+    setAdjustReason('');
+    setWalletAdjustDialogOpen(true);
+  };
+
+  const adjustWallet = async () => {
+    if (!adjustUser) return;
+    const amount = Number(adjustAmount);
+    if (!amount) { toast.error('Enter valid amount'); return; }
+    if (!adjustReason.trim()) { toast.error('Enter reason'); return; }
+
+    const newBalance = Math.max(0, (adjustUser.wallet_balance || 0) + amount);
+    await supabase.from('profiles').update({ wallet_balance: newBalance }).eq('id', adjustUser.id);
+    await supabase.from('wallet_transactions').insert({
+      user_id: adjustUser.id, amount, type: amount > 0 ? 'admin_credit' : 'admin_debit',
+      description: adjustReason.trim(),
+    });
+    await supabase.from('admin_logs').insert({
+      admin_id: user!.id, action: 'wallet_adjustment',
+      details: { target_user: adjustUser.id, amount, reason: adjustReason.trim() },
+    });
+
+    toast.success(`Wallet adjusted by ₹${amount}`);
+    setWalletAdjustDialogOpen(false);
+    void loadAll();
+  };
+
   return (
     <div className="min-h-screen bg-background bg-grid">
       <Navbar />
