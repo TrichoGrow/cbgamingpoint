@@ -828,6 +828,7 @@ const AdminPanel = () => {
           </TabsContent>
         </Tabs>
       </div>
+      <FloatingSupport />
     </div>
   );
 };
