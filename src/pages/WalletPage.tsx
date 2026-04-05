@@ -12,7 +12,7 @@ import { Wallet as WalletIcon, ArrowUpCircle, ArrowDownCircle, Copy, Upload, Che
 import StatCard from '@/components/StatCard';
 import { toast } from 'sonner';
 
-const MIN_DEPOSIT = 50;
+const MIN_DEPOSIT = 10;
 const MIN_WITHDRAW = 100;
 
 const WalletPage = () => {
