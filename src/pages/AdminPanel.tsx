@@ -31,6 +31,7 @@ const AdminPanel = () => {
   const [gameName, setGameName] = useState('');
   const [gameType, setGameType] = useState('');
   const [gameLogo, setGameLogo] = useState('');
+  const [gameLogoFile, setGameLogoFile] = useState<File | null>(null);
   const [editingGame, setEditingGame] = useState<any>(null);
   const [gameDialogOpen, setGameDialogOpen] = useState(false);
 
