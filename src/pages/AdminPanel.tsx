@@ -17,6 +17,7 @@ import FloatingSupport from '@/components/FloatingSupport';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import AdminActivityFeed from '@/components/AdminActivityFeed';
+import TournamentParticipants from '@/components/TournamentParticipants';
 
 const AdminPanel = () => {
   const { user } = useAuth();
