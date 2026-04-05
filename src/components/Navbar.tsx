@@ -40,6 +40,9 @@ const Navbar = () => {
           </span>
         </Link>
 
+        <div className="flex items-center gap-2">
+          {user && <NotificationBell />}
+
         {/* Desktop Nav */}
         {user && (
           <div className="hidden items-center gap-1 md:flex">
