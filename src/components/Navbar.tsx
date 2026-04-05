@@ -7,7 +7,7 @@ import {
 import { useState } from 'react';
 import appIcon from '@/assets/appicon.png';
 
-const WHATSAPP_NUMBER = '919319263747';
+
 
 const Navbar = () => {
   const { user, isAdmin, signOut } = useAuth();
