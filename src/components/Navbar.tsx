@@ -2,7 +2,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { 
-  Home, Trophy, Wallet, Shield, LogOut, Menu, X, User, MessageCircle
+  Home, Trophy, Wallet, Shield, LogOut, Menu, X, User, Award, Swords
 } from 'lucide-react';
 import { useState } from 'react';
 import appIcon from '@/assets/appicon.png';
