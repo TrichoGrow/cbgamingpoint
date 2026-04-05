@@ -98,10 +98,6 @@ const Navbar = () => {
                 <LogOut className="h-4 w-4" />
                 Logout
               </Button>
-              <Button variant="ghost" onClick={() => { signOut(); setMobileOpen(false); }} className="w-full justify-start gap-2 text-muted-foreground">
-                <LogOut className="h-4 w-4" />
-                Logout
-              </Button>
             </div>
           ) : (
             <div className="flex flex-col gap-2">
