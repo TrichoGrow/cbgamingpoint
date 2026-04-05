@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+import FloatingSupport from '@/components/FloatingSupport';
 import { useRealtimeWallet } from '@/hooks/useRealtimeWallet';
 import Navbar from '@/components/Navbar';
 import { Button } from '@/components/ui/button';
