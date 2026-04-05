@@ -66,6 +66,7 @@ const AdminPanel = () => {
   const [notifMessage, setNotifMessage] = useState('');
   const [notifTarget, setNotifTarget] = useState('all');
   const [notifSending, setNotifSending] = useState(false);
+  const [viewAdminParticipants, setViewAdminParticipants] = useState<any>(null);
 
   useEffect(() => {
     if (!user) return;
