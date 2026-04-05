@@ -98,17 +98,10 @@ const Navbar = () => {
                   </Button>
                 </Link>
               ))}
-              <a
-                href={`https://wa.me/${WHATSAPP_NUMBER}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={() => setMobileOpen(false)}
-              >
-                <Button variant="ghost" className="w-full justify-start gap-2 text-success">
-                  <MessageCircle className="h-4 w-4" />
-                  Contact Support
-                </Button>
-              </a>
+              <Button variant="ghost" onClick={() => { signOut(); setMobileOpen(false); }} className="w-full justify-start gap-2 text-muted-foreground">
+                <LogOut className="h-4 w-4" />
+                Logout
+              </Button>
               <Button variant="ghost" onClick={() => { signOut(); setMobileOpen(false); }} className="w-full justify-start gap-2 text-muted-foreground">
                 <LogOut className="h-4 w-4" />
                 Logout
