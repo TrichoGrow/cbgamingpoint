@@ -9,6 +9,8 @@ import Index from "./pages/Index";
 import AuthPage from "./pages/AuthPage";
 import Dashboard from "./pages/Dashboard";
 import TournamentsPage from "./pages/TournamentsPage";
+import MyTournamentsPage from "./pages/MyTournamentsPage";
+import LeaderboardPage from "./pages/LeaderboardPage";
 import WalletPage from "./pages/WalletPage";
 import ProfilePage from "./pages/ProfilePage";
 import AdminPanel from "./pages/AdminPanel";
