@@ -331,6 +331,7 @@ const WalletPage = () => {
           </TabsContent>
         </Tabs>
       </div>
+      <FloatingSupport />
     </div>
   );
 };
