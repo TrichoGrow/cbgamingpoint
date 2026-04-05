@@ -794,7 +794,17 @@ const AdminPanel = () => {
                 <div className="space-y-3">
                   <div><Label className="text-foreground">Game Name</Label><Input value={gameName} onChange={e => setGameName(e.target.value)} className="mt-1 bg-background" /></div>
                   <div><Label className="text-foreground">Game Type</Label><Input value={gameType} onChange={e => setGameType(e.target.value)} className="mt-1 bg-background" placeholder="e.g. Battle Royale, FPS" /></div>
-                  <div><Label className="text-foreground">Logo URL</Label><Input value={gameLogo} onChange={e => setGameLogo(e.target.value)} className="mt-1 bg-background" placeholder="https://..." /></div>
+                  <div>
+                    <Label className="text-foreground">Logo Image</Label>
+                    <Input type="file" accept="image/*" onChange={e => setGameLogoFile(e.target.files?.[0] || null)} className="mt-1 bg-background" />
+                    {gameLogo && !gameLogoFile && (
+                      <div className="mt-2 flex items-center gap-2">
+                        <img src={gameLogo} alt="Current logo" className="h-10 w-10 rounded-lg object-cover" />
+                        <span className="text-xs text-muted-foreground">Current logo</span>
+                      </div>
+                    )}
+                  </div>
+                  <div><Label className="text-foreground">Or Logo URL</Label><Input value={gameLogo} onChange={e => setGameLogo(e.target.value)} className="mt-1 bg-background" placeholder="https://..." /></div>
                   <Button onClick={saveGame} className="w-full">{editingGame ? 'Update' : 'Add'} Game</Button>
                 </div>
               </DialogContent>
