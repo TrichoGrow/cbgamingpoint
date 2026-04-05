@@ -59,6 +59,12 @@ const AdminPanel = () => {
   const [adjustAmount, setAdjustAmount] = useState('');
   const [adjustReason, setAdjustReason] = useState('');
 
+  // Notifications
+  const [notifTitle, setNotifTitle] = useState('');
+  const [notifMessage, setNotifMessage] = useState('');
+  const [notifTarget, setNotifTarget] = useState('all');
+  const [notifSending, setNotifSending] = useState(false);
+
   useEffect(() => {
     if (!user) return;
     void loadAll();
