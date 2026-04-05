@@ -121,6 +121,7 @@ const Dashboard = () => {
           )}
         </div>
       </div>
+      <FloatingSupport />
     </div>
   );
 };

@@ -209,6 +209,7 @@ const TournamentsPage = () => {
           </div>
         )}
       </div>
+      <FloatingSupport />
     </div>
   );
 };
