@@ -512,6 +512,32 @@ const AdminPanel = () => {
     void loadAll();
   };
 
+  const sendNotification = async () => {
+    if (!notifTitle.trim() || !notifMessage.trim()) { toast.error('Title and message required'); return; }
+    setNotifSending(true);
+
+    if (notifTarget === 'all') {
+      const { error } = await supabase.from('notifications').insert({
+        title: notifTitle.trim(), message: notifMessage.trim(), is_global: true,
+      });
+      if (error) { toast.error(error.message); setNotifSending(false); return; }
+    } else {
+      const { error } = await supabase.from('notifications').insert({
+        title: notifTitle.trim(), message: notifMessage.trim(), user_id: notifTarget, is_global: false,
+      });
+      if (error) { toast.error(error.message); setNotifSending(false); return; }
+    }
+
+    await supabase.from('admin_logs').insert({
+      admin_id: user!.id, action: 'sent_notification',
+      details: { title: notifTitle.trim(), target: notifTarget },
+    });
+
+    toast.success('Notification sent!');
+    setNotifTitle(''); setNotifMessage(''); setNotifTarget('all');
+    setNotifSending(false);
+  };
+
   return (
     <div className="min-h-screen bg-background bg-grid">
       <Navbar />
