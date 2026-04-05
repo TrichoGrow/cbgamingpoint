@@ -67,12 +67,6 @@ const Navbar = () => {
 
         {!user && (
           <div className="hidden gap-2 md:flex">
-            <a href={`https://wa.me/${WHATSAPP_NUMBER}`} target="_blank" rel="noopener noreferrer">
-              <Button variant="ghost" size="sm" className="gap-2 text-success">
-                <MessageCircle className="h-4 w-4" />
-                Support
-              </Button>
-            </a>
             <Link to="/auth">
               <Button variant="outline" size="sm">Login</Button>
             </Link>
