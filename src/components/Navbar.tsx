@@ -109,12 +109,6 @@ const Navbar = () => {
             </div>
           ) : (
             <div className="flex flex-col gap-2">
-              <a href={`https://wa.me/${WHATSAPP_NUMBER}`} target="_blank" rel="noopener noreferrer" onClick={() => setMobileOpen(false)}>
-                <Button variant="ghost" className="w-full justify-start gap-2 text-success">
-                  <MessageCircle className="h-4 w-4" />
-                  Contact Support
-                </Button>
-              </a>
               <Link to="/auth" onClick={() => setMobileOpen(false)}>
                 <Button variant="outline" className="w-full">Login</Button>
               </Link>
