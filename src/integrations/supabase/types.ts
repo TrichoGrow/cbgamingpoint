@@ -154,6 +154,36 @@ export type Database = {
           },
         ]
       }
+      notifications: {
+        Row: {
+          created_at: string
+          id: string
+          is_global: boolean
+          is_read: boolean
+          message: string
+          title: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_global?: boolean
+          is_read?: boolean
+          message: string
+          title: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_global?: boolean
+          is_read?: boolean
+          message?: string
+          title?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       participants: {
         Row: {
           created_at: string
