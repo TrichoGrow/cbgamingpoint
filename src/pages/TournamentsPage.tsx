@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Trophy, Users, Clock, Search } from 'lucide-react';
 import { toast } from 'sonner';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import TournamentParticipants from '@/components/TournamentParticipants';
 
 const TournamentsPage = () => {
   const { user } = useAuth();
