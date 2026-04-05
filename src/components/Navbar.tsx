@@ -17,6 +17,8 @@ const Navbar = () => {
   const navItems = [
     { to: '/dashboard', label: 'Dashboard', icon: Home },
     { to: '/tournaments', label: 'Tournaments', icon: Trophy },
+    { to: '/my-tournaments', label: 'My Matches', icon: Swords },
+    { to: '/leaderboard', label: 'Leaderboard', icon: Award },
     { to: '/wallet', label: 'Wallet', icon: Wallet },
     { to: '/profile', label: 'Profile', icon: User },
   ];
