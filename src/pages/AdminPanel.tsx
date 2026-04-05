@@ -681,6 +681,7 @@ const AdminPanel = () => {
                         </SelectContent>
                       </Select>
                       <Button size="sm" variant="outline" onClick={() => openEditTournament(t)}><Edit className="h-4 w-4" /></Button>
+                      <Button size="sm" variant="outline" className="gap-1" onClick={() => setViewAdminParticipants(t)}><Users className="h-4 w-4" /> Players</Button>
                       <Button size="sm" variant="outline" className="gap-1" onClick={() => openWinnerDialog(t)}><Medal className="h-4 w-4" /> Winner</Button>
                       <Button size="sm" variant="destructive" onClick={() => deleteTournament(t)}><Trash2 className="h-4 w-4" /></Button>
                     </div>
