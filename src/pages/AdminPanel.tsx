@@ -862,6 +862,42 @@ const AdminPanel = () => {
               </div>
             </div>
           </TabsContent>
+
+          {/* Notifications Tab */}
+          <TabsContent value="notifications">
+            <div className="max-w-md space-y-6">
+              <div className="rounded-lg border border-border bg-card p-6">
+                <h3 className="font-display text-lg font-bold text-foreground mb-4 flex items-center gap-2">
+                  <Bell className="h-5 w-5 text-primary" /> Send Notification
+                </h3>
+                <div className="space-y-4">
+                  <div>
+                    <Label className="text-foreground">Send To</Label>
+                    <Select value={notifTarget} onValueChange={setNotifTarget}>
+                      <SelectTrigger className="mt-1 bg-background"><SelectValue placeholder="All Users" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Users (Global)</SelectItem>
+                        {allUsers.map(u => (
+                          <SelectItem key={u.id} value={u.id}>{u.email || u.in_game_name || u.id.slice(0, 8)}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label className="text-foreground">Title</Label>
+                    <Input value={notifTitle} onChange={e => setNotifTitle(e.target.value)} className="mt-1 bg-background" placeholder="Notification title" />
+                  </div>
+                  <div>
+                    <Label className="text-foreground">Message</Label>
+                    <Textarea value={notifMessage} onChange={e => setNotifMessage(e.target.value)} className="mt-1 bg-background" placeholder="Notification message..." rows={3} />
+                  </div>
+                  <Button onClick={sendNotification} disabled={notifSending} className="w-full gap-2">
+                    <Send className="h-4 w-4" /> {notifSending ? 'Sending...' : 'Send Notification'}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </TabsContent>
         </Tabs>
       </div>
       <FloatingSupport />
