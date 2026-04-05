@@ -753,14 +753,17 @@ const AdminPanel = () => {
           <TabsContent value="users">
             <div className="space-y-3">
               {allUsers.map(u => (
-                <div key={u.id} className="flex items-center justify-between rounded-lg border border-border bg-card p-4">
+                <div key={u.id} className="flex flex-wrap items-center justify-between rounded-lg border border-border bg-card p-4 gap-3">
                   <div>
                     <p className="font-semibold text-foreground">{u.email || u.id.slice(0, 12)}</p>
-                    <p className="text-xs text-muted-foreground">Balance: ₹{u.wallet_balance || 0}</p>
-                    <p className="text-xs text-muted-foreground">Joined: {new Date(u.created_at).toLocaleDateString()}</p>
+                    <p className="text-xs text-muted-foreground">IGN: {u.in_game_name || 'N/A'} • Phone: {u.phone || 'N/A'}</p>
+                    <p className="text-xs text-muted-foreground">Balance: ₹{u.wallet_balance || 0} • Joined: {new Date(u.created_at).toLocaleDateString()}</p>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <Badge variant={u.is_banned ? 'destructive' : 'secondary'}>{u.is_banned ? 'Banned' : 'Active'}</Badge>
+                    <Button size="sm" variant="outline" onClick={() => openWalletAdjust(u)} className="gap-1">
+                      <Wallet className="h-3 w-3" /> Adjust
+                    </Button>
                     <Button size="sm" variant="outline" onClick={async () => {
                       await supabase.from('profiles').update({ is_banned: !u.is_banned }).eq('id', u.id);
                       toast.success(u.is_banned ? 'User unbanned' : 'User banned');
@@ -770,6 +773,27 @@ const AdminPanel = () => {
                 </div>
               ))}
             </div>
+
+            {/* Wallet Adjustment Dialog */}
+            <Dialog open={walletAdjustDialogOpen} onOpenChange={setWalletAdjustDialogOpen}>
+              <DialogContent className="bg-card border-border">
+                <DialogHeader>
+                  <DialogTitle className="font-display text-foreground">Adjust Wallet</DialogTitle>
+                  <DialogDescription>Adjust wallet for {adjustUser?.email || adjustUser?.id?.slice(0, 8)} (Current: ₹{adjustUser?.wallet_balance || 0})</DialogDescription>
+                </DialogHeader>
+                <div className="space-y-3">
+                  <div>
+                    <Label className="text-foreground">Amount (+ to add, - to deduct)</Label>
+                    <Input type="number" value={adjustAmount} onChange={e => setAdjustAmount(e.target.value)} className="mt-1 bg-background" placeholder="e.g. 100 or -50" />
+                  </div>
+                  <div>
+                    <Label className="text-foreground">Reason</Label>
+                    <Input value={adjustReason} onChange={e => setAdjustReason(e.target.value)} className="mt-1 bg-background" placeholder="Reason for adjustment" />
+                  </div>
+                  <Button onClick={adjustWallet} className="w-full">Apply Adjustment</Button>
+                </div>
+              </DialogContent>
+            </Dialog>
           </TabsContent>
 
           {/* Settings Tab */}
