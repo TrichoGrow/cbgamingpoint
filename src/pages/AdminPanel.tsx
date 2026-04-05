@@ -45,6 +45,19 @@ const AdminPanel = () => {
   const [upiId, setUpiId] = useState('');
   const [upiLoading, setUpiLoading] = useState(false);
 
+  // Winner declaration
+  const [winnerDialogOpen, setWinnerDialogOpen] = useState(false);
+  const [selectedTournamentForWinner, setSelectedTournamentForWinner] = useState<any>(null);
+  const [tournamentParticipants, setTournamentParticipants] = useState<any[]>([]);
+  const [selectedWinnerId, setSelectedWinnerId] = useState('');
+  const [prizeAmount, setPrizeAmount] = useState('');
+
+  // User wallet adjustment
+  const [walletAdjustDialogOpen, setWalletAdjustDialogOpen] = useState(false);
+  const [adjustUser, setAdjustUser] = useState<any>(null);
+  const [adjustAmount, setAdjustAmount] = useState('');
+  const [adjustReason, setAdjustReason] = useState('');
+
   useEffect(() => {
     if (!user) return;
     void loadAll();
