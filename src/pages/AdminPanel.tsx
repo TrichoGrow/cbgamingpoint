@@ -11,11 +11,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import {
-  Users, Trophy, DollarSign, Gamepad2, Clock, CheckCircle, XCircle, Plus, Trash2, Edit, Image, Shield, Settings, Medal, Wallet
+  Users, Trophy, DollarSign, Gamepad2, Clock, CheckCircle, XCircle, Plus, Trash2, Edit, Image, Shield, Settings, Medal, Wallet, Bell, Send
 } from 'lucide-react';
 import FloatingSupport from '@/components/FloatingSupport';
+import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import AdminActivityFeed from '@/components/AdminActivityFeed';
+import TournamentParticipants from '@/components/TournamentParticipants';
 
 const AdminPanel = () => {
   const { user } = useAuth();
@@ -30,6 +32,7 @@ const AdminPanel = () => {
   const [gameName, setGameName] = useState('');
   const [gameType, setGameType] = useState('');
   const [gameLogo, setGameLogo] = useState('');
+  const [gameLogoFile, setGameLogoFile] = useState<File | null>(null);
   const [editingGame, setEditingGame] = useState<any>(null);
   const [gameDialogOpen, setGameDialogOpen] = useState(false);
 
@@ -57,6 +60,13 @@ const AdminPanel = () => {
   const [adjustUser, setAdjustUser] = useState<any>(null);
   const [adjustAmount, setAdjustAmount] = useState('');
   const [adjustReason, setAdjustReason] = useState('');
+
+  // Notifications
+  const [notifTitle, setNotifTitle] = useState('');
+  const [notifMessage, setNotifMessage] = useState('');
+  const [notifTarget, setNotifTarget] = useState('all');
+  const [notifSending, setNotifSending] = useState(false);
+  const [viewAdminParticipants, setViewAdminParticipants] = useState<any>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -146,6 +156,7 @@ const AdminPanel = () => {
     setGameName('');
     setGameType('');
     setGameLogo('');
+    setGameLogoFile(null);
     setGameDialogOpen(true);
   };
 
@@ -154,12 +165,26 @@ const AdminPanel = () => {
     setGameName(g.name);
     setGameType(g.game_type || '');
     setGameLogo(g.logo_url || '');
+    setGameLogoFile(null);
     setGameDialogOpen(true);
   };
 
   const saveGame = async () => {
     if (!gameName.trim()) { toast.error('Game name required'); return; }
-    const payload = { name: gameName.trim(), game_type: gameType.trim() || null, logo_url: gameLogo.trim() || null };
+
+    let logoUrl = gameLogo.trim() || null;
+
+    // Upload file if selected
+    if (gameLogoFile) {
+      const ext = gameLogoFile.name.split('.').pop();
+      const path = `${Date.now()}.${ext}`;
+      const { error: uploadError } = await supabase.storage.from('game-logos').upload(path, gameLogoFile);
+      if (uploadError) { toast.error('Failed to upload logo: ' + uploadError.message); return; }
+      const { data: urlData } = supabase.storage.from('game-logos').getPublicUrl(path);
+      logoUrl = urlData.publicUrl;
+    }
+
+    const payload = { name: gameName.trim(), game_type: gameType.trim() || null, logo_url: logoUrl };
     const { error } = editingGame
       ? await supabase.from('games').update(payload).eq('id', editingGame.id)
       : await supabase.from('games').insert({ ...payload, is_active: true });
@@ -505,6 +530,32 @@ const AdminPanel = () => {
     void loadAll();
   };
 
+  const sendNotification = async () => {
+    if (!notifTitle.trim() || !notifMessage.trim()) { toast.error('Title and message required'); return; }
+    setNotifSending(true);
+
+    if (notifTarget === 'all') {
+      const { error } = await supabase.from('notifications').insert({
+        title: notifTitle.trim(), message: notifMessage.trim(), is_global: true,
+      });
+      if (error) { toast.error(error.message); setNotifSending(false); return; }
+    } else {
+      const { error } = await supabase.from('notifications').insert({
+        title: notifTitle.trim(), message: notifMessage.trim(), user_id: notifTarget, is_global: false,
+      });
+      if (error) { toast.error(error.message); setNotifSending(false); return; }
+    }
+
+    await supabase.from('admin_logs').insert({
+      admin_id: user!.id, action: 'sent_notification',
+      details: { title: notifTitle.trim(), target: notifTarget },
+    });
+
+    toast.success('Notification sent!');
+    setNotifTitle(''); setNotifMessage(''); setNotifTarget('all');
+    setNotifSending(false);
+  };
+
   return (
     <div className="min-h-screen bg-background bg-grid">
       <Navbar />
@@ -534,6 +585,9 @@ const AdminPanel = () => {
             <TabsTrigger value="games" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Games</TabsTrigger>
             <TabsTrigger value="users" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Users</TabsTrigger>
             <TabsTrigger value="settings" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Settings</TabsTrigger>
+            <TabsTrigger value="notifications" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+              <Bell className="h-3 w-3 mr-1" /> Notify
+            </TabsTrigger>
           </TabsList>
 
           {/* Deposits Tab */}
@@ -627,6 +681,7 @@ const AdminPanel = () => {
                         </SelectContent>
                       </Select>
                       <Button size="sm" variant="outline" onClick={() => openEditTournament(t)}><Edit className="h-4 w-4" /></Button>
+                      <Button size="sm" variant="outline" className="gap-1" onClick={() => setViewAdminParticipants(t)}><Users className="h-4 w-4" /> Players</Button>
                       <Button size="sm" variant="outline" className="gap-1" onClick={() => openWinnerDialog(t)}><Medal className="h-4 w-4" /> Winner</Button>
                       <Button size="sm" variant="destructive" onClick={() => deleteTournament(t)}><Trash2 className="h-4 w-4" /></Button>
                     </div>
@@ -704,6 +759,14 @@ const AdminPanel = () => {
                 </div>
               </DialogContent>
             </Dialog>
+            {viewAdminParticipants && (
+              <TournamentParticipants
+                tournamentId={viewAdminParticipants.id}
+                tournamentTitle={viewAdminParticipants.title}
+                open={!!viewAdminParticipants}
+                onOpenChange={(open) => !open && setViewAdminParticipants(null)}
+              />
+            )}
           </TabsContent>
 
           {/* Games Tab */}
@@ -742,7 +805,17 @@ const AdminPanel = () => {
                 <div className="space-y-3">
                   <div><Label className="text-foreground">Game Name</Label><Input value={gameName} onChange={e => setGameName(e.target.value)} className="mt-1 bg-background" /></div>
                   <div><Label className="text-foreground">Game Type</Label><Input value={gameType} onChange={e => setGameType(e.target.value)} className="mt-1 bg-background" placeholder="e.g. Battle Royale, FPS" /></div>
-                  <div><Label className="text-foreground">Logo URL</Label><Input value={gameLogo} onChange={e => setGameLogo(e.target.value)} className="mt-1 bg-background" placeholder="https://..." /></div>
+                  <div>
+                    <Label className="text-foreground">Logo Image</Label>
+                    <Input type="file" accept="image/*" onChange={e => setGameLogoFile(e.target.files?.[0] || null)} className="mt-1 bg-background" />
+                    {gameLogo && !gameLogoFile && (
+                      <div className="mt-2 flex items-center gap-2">
+                        <img src={gameLogo} alt="Current logo" className="h-10 w-10 rounded-lg object-cover" />
+                        <span className="text-xs text-muted-foreground">Current logo</span>
+                      </div>
+                    )}
+                  </div>
+                  <div><Label className="text-foreground">Or Logo URL</Label><Input value={gameLogo} onChange={e => setGameLogo(e.target.value)} className="mt-1 bg-background" placeholder="https://..." /></div>
                   <Button onClick={saveGame} className="w-full">{editingGame ? 'Update' : 'Add'} Game</Button>
                 </div>
               </DialogContent>
@@ -822,6 +895,42 @@ const AdminPanel = () => {
                       Remove
                     </Button>
                   </div>
+                </div>
+              </div>
+            </div>
+          </TabsContent>
+
+          {/* Notifications Tab */}
+          <TabsContent value="notifications">
+            <div className="max-w-md space-y-6">
+              <div className="rounded-lg border border-border bg-card p-6">
+                <h3 className="font-display text-lg font-bold text-foreground mb-4 flex items-center gap-2">
+                  <Bell className="h-5 w-5 text-primary" /> Send Notification
+                </h3>
+                <div className="space-y-4">
+                  <div>
+                    <Label className="text-foreground">Send To</Label>
+                    <Select value={notifTarget} onValueChange={setNotifTarget}>
+                      <SelectTrigger className="mt-1 bg-background"><SelectValue placeholder="All Users" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Users (Global)</SelectItem>
+                        {allUsers.map(u => (
+                          <SelectItem key={u.id} value={u.id}>{u.email || u.in_game_name || u.id.slice(0, 8)}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label className="text-foreground">Title</Label>
+                    <Input value={notifTitle} onChange={e => setNotifTitle(e.target.value)} className="mt-1 bg-background" placeholder="Notification title" />
+                  </div>
+                  <div>
+                    <Label className="text-foreground">Message</Label>
+                    <Textarea value={notifMessage} onChange={e => setNotifMessage(e.target.value)} className="mt-1 bg-background" placeholder="Notification message..." rows={3} />
+                  </div>
+                  <Button onClick={sendNotification} disabled={notifSending} className="w-full gap-2">
+                    <Send className="h-4 w-4" /> {notifSending ? 'Sending...' : 'Send Notification'}
+                  </Button>
                 </div>
               </div>
             </div>

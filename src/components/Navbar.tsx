@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 import appIcon from '@/assets/appicon.png';
+import NotificationBell from '@/components/NotificationBell';
 
 
 
@@ -39,47 +40,47 @@ const Navbar = () => {
           </span>
         </Link>
 
-        {/* Desktop Nav */}
-        {user && (
-          <div className="hidden items-center gap-1 md:flex">
-            {navItems.map(item => (
-              <Link key={item.to} to={item.to}>
-                <Button
-                  variant={isActive(item.to) ? 'default' : 'ghost'}
-                  size="sm"
-                  className="gap-2"
-                >
-                  <item.icon className="h-4 w-4" />
-                  {item.label}
-                </Button>
+        <div className="flex items-center gap-2">
+          {user && <NotificationBell />}
+
+          {/* Desktop Nav */}
+          {user && (
+            <div className="hidden items-center gap-1 md:flex">
+              {navItems.map(item => (
+                <Link key={item.to} to={item.to}>
+                  <Button
+                    variant={isActive(item.to) ? 'default' : 'ghost'}
+                    size="sm"
+                    className="gap-2"
+                  >
+                    <item.icon className="h-4 w-4" />
+                    {item.label}
+                  </Button>
+                </Link>
+              ))}
+              <Button variant="ghost" size="sm" onClick={signOut} className="gap-2 text-muted-foreground">
+                <LogOut className="h-4 w-4" />
+                Logout
+              </Button>
+            </div>
+          )}
+
+          {!user && (
+            <div className="hidden gap-2 md:flex">
+              <Link to="/auth">
+                <Button variant="outline" size="sm">Login</Button>
               </Link>
-            ))}
-            <Button variant="ghost" size="sm" onClick={signOut} className="gap-2 text-muted-foreground">
-              <LogOut className="h-4 w-4" />
-              Logout
-            </Button>
-            <Button variant="ghost" size="sm" onClick={signOut} className="gap-2 text-muted-foreground">
-              <LogOut className="h-4 w-4" />
-              Logout
-            </Button>
-          </div>
-        )}
+              <Link to="/auth?mode=signup">
+                <Button size="sm">Sign Up</Button>
+              </Link>
+            </div>
+          )}
 
-        {!user && (
-          <div className="hidden gap-2 md:flex">
-            <Link to="/auth">
-              <Button variant="outline" size="sm">Login</Button>
-            </Link>
-            <Link to="/auth?mode=signup">
-              <Button size="sm">Sign Up</Button>
-            </Link>
-          </div>
-        )}
-
-        {/* Mobile toggle */}
-        <button className="md:hidden text-foreground" onClick={() => setMobileOpen(!mobileOpen)}>
-          {mobileOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-        </button>
+          {/* Mobile toggle */}
+          <button className="md:hidden text-foreground" onClick={() => setMobileOpen(!mobileOpen)}>
+            {mobileOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+          </button>
+        </div>
       </div>
 
       {/* Mobile Nav */}
@@ -98,10 +99,6 @@ const Navbar = () => {
                   </Button>
                 </Link>
               ))}
-              <Button variant="ghost" onClick={() => { signOut(); setMobileOpen(false); }} className="w-full justify-start gap-2 text-muted-foreground">
-                <LogOut className="h-4 w-4" />
-                Logout
-              </Button>
               <Button variant="ghost" onClick={() => { signOut(); setMobileOpen(false); }} className="w-full justify-start gap-2 text-muted-foreground">
                 <LogOut className="h-4 w-4" />
                 Logout

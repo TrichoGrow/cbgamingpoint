@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Trophy, Users, Clock, Search } from 'lucide-react';
 import { toast } from 'sonner';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import TournamentParticipants from '@/components/TournamentParticipants';
 
 const TournamentsPage = () => {
   const { user } = useAuth();
@@ -20,6 +21,7 @@ const TournamentsPage = () => {
   const [gameFilter, setGameFilter] = useState('all');
   const [typeFilter, setTypeFilter] = useState('all');
   const [joinedIds, setJoinedIds] = useState<Set<string>>(new Set());
+  const [viewParticipants, setViewParticipants] = useState<any>(null);
 
   const refreshTournaments = useCallback(() => {
     loadTournaments();
@@ -196,17 +198,31 @@ const TournamentsPage = () => {
                     <Clock className="h-3 w-3 ml-2" />
                     {new Date(t.start_time).toLocaleDateString()}
                   </div>
-                  {joinedIds.has(t.id) ? (
-                    <Badge variant="secondary">Joined</Badge>
-                  ) : (t.slots_filled || 0) >= t.total_slots ? (
-                    <Badge variant="secondary">Full</Badge>
-                  ) : (
-                    <Button size="sm" onClick={() => joinTournament(t)}>Join Now</Button>
-                  )}
+                  <div className="flex items-center gap-2">
+                    <Button size="sm" variant="outline" onClick={() => setViewParticipants(t)} className="gap-1 text-xs">
+                      <Users className="h-3 w-3" /> View
+                    </Button>
+                    {joinedIds.has(t.id) ? (
+                      <Badge variant="secondary">Joined</Badge>
+                    ) : (t.slots_filled || 0) >= t.total_slots ? (
+                      <Badge variant="secondary">Full</Badge>
+                    ) : (
+                      <Button size="sm" onClick={() => joinTournament(t)}>Join Now</Button>
+                    )}
+                  </div>
                 </div>
               </div>
             ))}
           </div>
+        )}
+
+        {viewParticipants && (
+          <TournamentParticipants
+            tournamentId={viewParticipants.id}
+            tournamentTitle={viewParticipants.title}
+            open={!!viewParticipants}
+            onOpenChange={(open) => !open && setViewParticipants(null)}
+          />
         )}
       </div>
       <FloatingSupport />
