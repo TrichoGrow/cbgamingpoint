@@ -54,16 +54,10 @@ const Navbar = () => {
                 </Button>
               </Link>
             ))}
-            <a
-              href={`https://wa.me/${WHATSAPP_NUMBER}`}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <Button variant="ghost" size="sm" className="gap-2 text-success">
-                <MessageCircle className="h-4 w-4" />
-                Support
-              </Button>
-            </a>
+            <Button variant="ghost" size="sm" onClick={signOut} className="gap-2 text-muted-foreground">
+              <LogOut className="h-4 w-4" />
+              Logout
+            </Button>
             <Button variant="ghost" size="sm" onClick={signOut} className="gap-2 text-muted-foreground">
               <LogOut className="h-4 w-4" />
               Logout
