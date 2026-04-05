@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+import FloatingSupport from '@/components/FloatingSupport';
 import { useRealtimeWallet } from '@/hooks/useRealtimeWallet';
 import Navbar from '@/components/Navbar';
 import { Button } from '@/components/ui/button';
@@ -12,7 +13,7 @@ import { Wallet as WalletIcon, ArrowUpCircle, ArrowDownCircle, Copy, Upload, Che
 import StatCard from '@/components/StatCard';
 import { toast } from 'sonner';
 
-const MIN_DEPOSIT = 50;
+const MIN_DEPOSIT = 10;
 const MIN_WITHDRAW = 100;
 
 const WalletPage = () => {
@@ -330,6 +331,7 @@ const WalletPage = () => {
           </TabsContent>
         </Tabs>
       </div>
+      <FloatingSupport />
     </div>
   );
 };

@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useRealtimeWallet } from '@/hooks/useRealtimeWallet';
 import { useRealtimeTournaments } from '@/hooks/useRealtimeTournaments';
 import Navbar from '@/components/Navbar';
+import FloatingSupport from '@/components/FloatingSupport';
 import StatCard from '@/components/StatCard';
 import { Wallet, Trophy, Target, TrendingUp, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -120,6 +121,7 @@ const Dashboard = () => {
           )}
         </div>
       </div>
+      <FloatingSupport />
     </div>
   );
 };

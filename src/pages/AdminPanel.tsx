@@ -11,8 +11,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import {
-  Users, Trophy, DollarSign, Gamepad2, Clock, CheckCircle, XCircle, Plus, Trash2, Edit, Image, Shield, Settings
+  Users, Trophy, DollarSign, Gamepad2, Clock, CheckCircle, XCircle, Plus, Trash2, Edit, Image, Shield, Settings, Medal, Wallet
 } from 'lucide-react';
+import FloatingSupport from '@/components/FloatingSupport';
 import { toast } from 'sonner';
 import AdminActivityFeed from '@/components/AdminActivityFeed';
 
@@ -43,6 +44,19 @@ const AdminPanel = () => {
   // UPI settings
   const [upiId, setUpiId] = useState('');
   const [upiLoading, setUpiLoading] = useState(false);
+
+  // Winner declaration
+  const [winnerDialogOpen, setWinnerDialogOpen] = useState(false);
+  const [selectedTournamentForWinner, setSelectedTournamentForWinner] = useState<any>(null);
+  const [tournamentParticipants, setTournamentParticipants] = useState<any[]>([]);
+  const [selectedWinnerId, setSelectedWinnerId] = useState('');
+  const [prizeAmount, setPrizeAmount] = useState('');
+
+  // User wallet adjustment
+  const [walletAdjustDialogOpen, setWalletAdjustDialogOpen] = useState(false);
+  const [adjustUser, setAdjustUser] = useState<any>(null);
+  const [adjustAmount, setAdjustAmount] = useState('');
+  const [adjustReason, setAdjustReason] = useState('');
 
   useEffect(() => {
     if (!user) return;
@@ -413,6 +427,84 @@ const AdminPanel = () => {
     setUpiLoading(false);
   };
 
+  // Winner declaration
+  const openWinnerDialog = async (tournament: any) => {
+    setSelectedTournamentForWinner(tournament);
+    setPrizeAmount(String(tournament.prize_pool));
+    setSelectedWinnerId('');
+    const { data } = await supabase
+      .from('participants')
+      .select('user_id')
+      .eq('tournament_id', tournament.id);
+    // Fetch profile info for each participant
+    const userIds = data?.map(p => p.user_id) || [];
+    const { data: profiles } = await supabase.from('profiles').select('id, email, in_game_name').in('id', userIds);
+    setTournamentParticipants(profiles || []);
+    setWinnerDialogOpen(true);
+  };
+
+  const declareWinner = async () => {
+    if (!selectedWinnerId || !selectedTournamentForWinner) { toast.error('Select a winner'); return; }
+    const prize = Number(prizeAmount);
+    if (prize <= 0) { toast.error('Enter valid prize amount'); return; }
+
+    // Update participant placement
+    await supabase.from('participants').update({ placement: 1 }).eq('tournament_id', selectedTournamentForWinner.id).eq('user_id', selectedWinnerId);
+
+    // Credit prize to winner wallet
+    const { data: profile } = await supabase.from('profiles').select('wallet_balance').eq('id', selectedWinnerId).single();
+    await supabase.from('profiles').update({ wallet_balance: (profile?.wallet_balance || 0) + prize }).eq('id', selectedWinnerId);
+
+    // Record transaction
+    await supabase.from('wallet_transactions').insert({
+      user_id: selectedWinnerId, amount: prize, type: 'prize',
+      description: `Prize for winning ${selectedTournamentForWinner.title}`, reference_id: selectedTournamentForWinner.id,
+    });
+
+    // Update tournament status
+    await supabase.from('tournaments').update({ status: 'completed' }).eq('id', selectedTournamentForWinner.id);
+
+    // Log admin action
+    await supabase.from('admin_logs').insert({
+      admin_id: user!.id, action: 'declared_winner',
+      details: { tournament_id: selectedTournamentForWinner.id, winner_id: selectedWinnerId, prize },
+    });
+
+    toast.success('Winner declared & prize credited!');
+    setWinnerDialogOpen(false);
+    void loadAll();
+  };
+
+  // User wallet adjustment
+  const openWalletAdjust = (u: any) => {
+    setAdjustUser(u);
+    setAdjustAmount('');
+    setAdjustReason('');
+    setWalletAdjustDialogOpen(true);
+  };
+
+  const adjustWallet = async () => {
+    if (!adjustUser) return;
+    const amount = Number(adjustAmount);
+    if (!amount) { toast.error('Enter valid amount'); return; }
+    if (!adjustReason.trim()) { toast.error('Enter reason'); return; }
+
+    const newBalance = Math.max(0, (adjustUser.wallet_balance || 0) + amount);
+    await supabase.from('profiles').update({ wallet_balance: newBalance }).eq('id', adjustUser.id);
+    await supabase.from('wallet_transactions').insert({
+      user_id: adjustUser.id, amount, type: amount > 0 ? 'admin_credit' : 'admin_debit',
+      description: adjustReason.trim(),
+    });
+    await supabase.from('admin_logs').insert({
+      admin_id: user!.id, action: 'wallet_adjustment',
+      details: { target_user: adjustUser.id, amount, reason: adjustReason.trim() },
+    });
+
+    toast.success(`Wallet adjusted by ₹${amount}`);
+    setWalletAdjustDialogOpen(false);
+    void loadAll();
+  };
+
   return (
     <div className="min-h-screen bg-background bg-grid">
       <Navbar />
@@ -535,6 +627,7 @@ const AdminPanel = () => {
                         </SelectContent>
                       </Select>
                       <Button size="sm" variant="outline" onClick={() => openEditTournament(t)}><Edit className="h-4 w-4" /></Button>
+                      <Button size="sm" variant="outline" className="gap-1" onClick={() => openWinnerDialog(t)}><Medal className="h-4 w-4" /> Winner</Button>
                       <Button size="sm" variant="destructive" onClick={() => deleteTournament(t)}><Trash2 className="h-4 w-4" /></Button>
                     </div>
                   </div>
@@ -581,6 +674,33 @@ const AdminPanel = () => {
                     </Select>
                   </div>
                   <Button onClick={saveTournament} className="w-full">{editingTournament ? 'Update' : 'Create'} Tournament</Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+            {/* Winner Declaration Dialog */}
+            <Dialog open={winnerDialogOpen} onOpenChange={setWinnerDialogOpen}>
+              <DialogContent className="bg-card border-border">
+                <DialogHeader>
+                  <DialogTitle className="font-display text-foreground">Declare Winner</DialogTitle>
+                  <DialogDescription>Select the winner for {selectedTournamentForWinner?.title}</DialogDescription>
+                </DialogHeader>
+                <div className="space-y-3">
+                  <div>
+                    <Label className="text-foreground">Winner</Label>
+                    <Select value={selectedWinnerId} onValueChange={setSelectedWinnerId}>
+                      <SelectTrigger className="mt-1 bg-background"><SelectValue placeholder="Select winner" /></SelectTrigger>
+                      <SelectContent>
+                        {tournamentParticipants.map(p => (
+                          <SelectItem key={p.id} value={p.id}>{p.in_game_name || p.email || p.id.slice(0, 8)}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label className="text-foreground">Prize Amount (₹)</Label>
+                    <Input type="number" value={prizeAmount} onChange={e => setPrizeAmount(e.target.value)} className="mt-1 bg-background" />
+                  </div>
+                  <Button onClick={declareWinner} className="w-full gap-2"><Medal className="h-4 w-4" /> Declare Winner & Credit Prize</Button>
                 </div>
               </DialogContent>
             </Dialog>
@@ -633,14 +753,17 @@ const AdminPanel = () => {
           <TabsContent value="users">
             <div className="space-y-3">
               {allUsers.map(u => (
-                <div key={u.id} className="flex items-center justify-between rounded-lg border border-border bg-card p-4">
+                <div key={u.id} className="flex flex-wrap items-center justify-between rounded-lg border border-border bg-card p-4 gap-3">
                   <div>
                     <p className="font-semibold text-foreground">{u.email || u.id.slice(0, 12)}</p>
-                    <p className="text-xs text-muted-foreground">Balance: ₹{u.wallet_balance || 0}</p>
-                    <p className="text-xs text-muted-foreground">Joined: {new Date(u.created_at).toLocaleDateString()}</p>
+                    <p className="text-xs text-muted-foreground">IGN: {u.in_game_name || 'N/A'} • Phone: {u.phone || 'N/A'}</p>
+                    <p className="text-xs text-muted-foreground">Balance: ₹{u.wallet_balance || 0} • Joined: {new Date(u.created_at).toLocaleDateString()}</p>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <Badge variant={u.is_banned ? 'destructive' : 'secondary'}>{u.is_banned ? 'Banned' : 'Active'}</Badge>
+                    <Button size="sm" variant="outline" onClick={() => openWalletAdjust(u)} className="gap-1">
+                      <Wallet className="h-3 w-3" /> Adjust
+                    </Button>
                     <Button size="sm" variant="outline" onClick={async () => {
                       await supabase.from('profiles').update({ is_banned: !u.is_banned }).eq('id', u.id);
                       toast.success(u.is_banned ? 'User unbanned' : 'User banned');
@@ -650,6 +773,27 @@ const AdminPanel = () => {
                 </div>
               ))}
             </div>
+
+            {/* Wallet Adjustment Dialog */}
+            <Dialog open={walletAdjustDialogOpen} onOpenChange={setWalletAdjustDialogOpen}>
+              <DialogContent className="bg-card border-border">
+                <DialogHeader>
+                  <DialogTitle className="font-display text-foreground">Adjust Wallet</DialogTitle>
+                  <DialogDescription>Adjust wallet for {adjustUser?.email || adjustUser?.id?.slice(0, 8)} (Current: ₹{adjustUser?.wallet_balance || 0})</DialogDescription>
+                </DialogHeader>
+                <div className="space-y-3">
+                  <div>
+                    <Label className="text-foreground">Amount (+ to add, - to deduct)</Label>
+                    <Input type="number" value={adjustAmount} onChange={e => setAdjustAmount(e.target.value)} className="mt-1 bg-background" placeholder="e.g. 100 or -50" />
+                  </div>
+                  <div>
+                    <Label className="text-foreground">Reason</Label>
+                    <Input value={adjustReason} onChange={e => setAdjustReason(e.target.value)} className="mt-1 bg-background" placeholder="Reason for adjustment" />
+                  </div>
+                  <Button onClick={adjustWallet} className="w-full">Apply Adjustment</Button>
+                </div>
+              </DialogContent>
+            </Dialog>
           </TabsContent>
 
           {/* Settings Tab */}
@@ -684,6 +828,7 @@ const AdminPanel = () => {
           </TabsContent>
         </Tabs>
       </div>
+      <FloatingSupport />
     </div>
   );
 };
