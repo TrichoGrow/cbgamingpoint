@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRealtimeTournaments } from '@/hooks/useRealtimeTournaments';
 import Navbar from '@/components/Navbar';
+import FloatingSupport from '@/components/FloatingSupport';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
