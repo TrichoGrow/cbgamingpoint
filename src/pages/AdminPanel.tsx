@@ -154,6 +154,7 @@ const AdminPanel = () => {
     setGameName('');
     setGameType('');
     setGameLogo('');
+    setGameLogoFile(null);
     setGameDialogOpen(true);
   };
 
@@ -162,12 +163,26 @@ const AdminPanel = () => {
     setGameName(g.name);
     setGameType(g.game_type || '');
     setGameLogo(g.logo_url || '');
+    setGameLogoFile(null);
     setGameDialogOpen(true);
   };
 
   const saveGame = async () => {
     if (!gameName.trim()) { toast.error('Game name required'); return; }
-    const payload = { name: gameName.trim(), game_type: gameType.trim() || null, logo_url: gameLogo.trim() || null };
+
+    let logoUrl = gameLogo.trim() || null;
+
+    // Upload file if selected
+    if (gameLogoFile) {
+      const ext = gameLogoFile.name.split('.').pop();
+      const path = `${Date.now()}.${ext}`;
+      const { error: uploadError } = await supabase.storage.from('game-logos').upload(path, gameLogoFile);
+      if (uploadError) { toast.error('Failed to upload logo: ' + uploadError.message); return; }
+      const { data: urlData } = supabase.storage.from('game-logos').getPublicUrl(path);
+      logoUrl = urlData.publicUrl;
+    }
+
+    const payload = { name: gameName.trim(), game_type: gameType.trim() || null, logo_url: logoUrl };
     const { error } = editingGame
       ? await supabase.from('games').update(payload).eq('id', editingGame.id)
       : await supabase.from('games').insert({ ...payload, is_active: true });
