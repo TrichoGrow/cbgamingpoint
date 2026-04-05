@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 import appIcon from '@/assets/appicon.png';
+import NotificationBell from '@/components/NotificationBell';
 
 
 
