@@ -609,6 +609,7 @@ const AdminPanel = () => {
           </Button>
         </div>
 
+        <div className="mb-6">
           <AdminActivityFeed />
         </div>
 
