@@ -67,6 +67,23 @@ const AdminPanel = () => {
   const [notifTarget, setNotifTarget] = useState('all');
   const [notifSending, setNotifSending] = useState(false);
   const [viewAdminParticipants, setViewAdminParticipants] = useState<any>(null);
+  const [healthStatus, setHealthStatus] = useState<{ ok: boolean; timestamp: string; profiles: number } | null>(null);
+  const [healthLoading, setHealthLoading] = useState(false);
+
+  const fetchHealth = async () => {
+    setHealthLoading(true);
+    try {
+      const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/keep-alive`;
+      const res = await fetch(url, {
+        headers: { Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}` },
+      });
+      const data = await res.json();
+      setHealthStatus(data);
+    } catch {
+      setHealthStatus({ ok: false, timestamp: new Date().toISOString(), profiles: 0 });
+    }
+    setHealthLoading(false);
+  };
 
   useEffect(() => {
     if (!user) return;
