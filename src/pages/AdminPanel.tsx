@@ -88,6 +88,7 @@ const AdminPanel = () => {
   useEffect(() => {
     if (!user) return;
     void loadAll();
+    void fetchHealth();
 
     // Realtime subscriptions for auto-refresh
     const channel = supabase
