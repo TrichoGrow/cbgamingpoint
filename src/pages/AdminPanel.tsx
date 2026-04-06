@@ -11,7 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import {
-  Users, Trophy, DollarSign, Gamepad2, Clock, CheckCircle, XCircle, Plus, Trash2, Edit, Image, Shield, Settings, Medal, Wallet, Bell, Send
+  Users, Trophy, DollarSign, Gamepad2, Clock, CheckCircle, XCircle, Plus, Trash2, Edit, Image, Shield, Settings, Medal, Wallet, Bell, Send, HeartPulse
 } from 'lucide-react';
 import FloatingSupport from '@/components/FloatingSupport';
 import { Textarea } from '@/components/ui/textarea';
@@ -67,10 +67,28 @@ const AdminPanel = () => {
   const [notifTarget, setNotifTarget] = useState('all');
   const [notifSending, setNotifSending] = useState(false);
   const [viewAdminParticipants, setViewAdminParticipants] = useState<any>(null);
+  const [healthStatus, setHealthStatus] = useState<{ ok: boolean; timestamp: string; profiles: number } | null>(null);
+  const [healthLoading, setHealthLoading] = useState(false);
+
+  const fetchHealth = async () => {
+    setHealthLoading(true);
+    try {
+      const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/keep-alive`;
+      const res = await fetch(url, {
+        headers: { Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}` },
+      });
+      const data = await res.json();
+      setHealthStatus(data);
+    } catch {
+      setHealthStatus({ ok: false, timestamp: new Date().toISOString(), profiles: 0 });
+    }
+    setHealthLoading(false);
+  };
 
   useEffect(() => {
     if (!user) return;
     void loadAll();
+    void fetchHealth();
 
     // Realtime subscriptions for auto-refresh
     const channel = supabase
@@ -571,6 +589,24 @@ const AdminPanel = () => {
           <StatCard title="Active" value={stats.activeTournaments} icon={<Trophy className="h-5 w-5" />} />
           <StatCard title="Deposits" value={stats.pendingDeposits} icon={<Clock className="h-5 w-5" />} />
           <StatCard title="Withdrawals" value={stats.pendingWithdrawals} icon={<Clock className="h-5 w-5" />} />
+        </div>
+
+        {/* Health Status Indicator */}
+        <div className="mb-6 flex items-center gap-3 rounded-lg border border-border bg-card p-3">
+          <HeartPulse className={`h-5 w-5 ${healthStatus?.ok ? 'text-green-500 animate-pulse' : 'text-destructive'}`} />
+          <div className="flex-1">
+            <p className="text-sm font-semibold text-foreground">
+              Backend Health: {healthLoading ? 'Checking...' : healthStatus?.ok ? 'Online' : 'Offline'}
+            </p>
+            {healthStatus?.timestamp && (
+              <p className="text-xs text-muted-foreground">
+                Last ping: {new Date(healthStatus.timestamp).toLocaleString()} — {healthStatus.profiles} profiles
+              </p>
+            )}
+          </div>
+          <Button size="sm" variant="outline" onClick={fetchHealth} disabled={healthLoading}>
+            {healthLoading ? 'Pinging…' : 'Ping Now'}
+          </Button>
         </div>
 
         <div className="mb-6">
