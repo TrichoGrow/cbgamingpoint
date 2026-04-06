@@ -9,12 +9,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Wallet as WalletIcon, ArrowUpCircle, ArrowDownCircle, Copy, Upload, CheckCircle, Clock, XCircle } from 'lucide-react';
+import { Wallet as WalletIcon, ArrowUpCircle, ArrowDownCircle, Copy, Upload, CheckCircle, Clock, XCircle, Building2, QrCode } from 'lucide-react';
 import StatCard from '@/components/StatCard';
 import { toast } from 'sonner';
-
-const MIN_DEPOSIT = 10;
-const MIN_WITHDRAW = 100;
 
 const WalletPage = () => {
   const { user } = useAuth();
@@ -22,7 +19,9 @@ const WalletPage = () => {
   const [deposits, setDeposits] = useState<any[]>([]);
   const [withdrawals, setWithdrawals] = useState<any[]>([]);
   const [transactions, setTransactions] = useState<any[]>([]);
-  const [upiId, setUpiId] = useState('Loading...');
+  
+  // Settings from DB
+  const [settings, setSettings] = useState<Record<string, string>>({});
 
   // Deposit form
   const [depositAmount, setDepositAmount] = useState('');
@@ -46,60 +45,64 @@ const WalletPage = () => {
 
   const loadData = async () => {
     if (!user) return;
-    const { data: profile } = await supabase.from('profiles').select('wallet_balance').eq('id', user.id).single();
-    setBalance(profile?.wallet_balance || 0);
+    const [profileRes, depsRes, withsRes, txnsRes, settingsRes] = await Promise.all([
+      supabase.from('profiles').select('wallet_balance').eq('id', user.id).single(),
+      supabase.from('deposit_requests').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
+      supabase.from('withdraw_requests').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
+      supabase.from('wallet_transactions').select('*').eq('user_id', user.id).order('created_at', { ascending: false }).limit(20),
+      supabase.from('app_settings').select('key, value'),
+    ]);
 
-    const { data: deps } = await supabase.from('deposit_requests').select('*').eq('user_id', user.id).order('created_at', { ascending: false });
-    setDeposits(deps || []);
+    setBalance(profileRes.data?.wallet_balance || 0);
+    setDeposits(depsRes.data || []);
+    setWithdrawals(withsRes.data || []);
+    setTransactions(txnsRes.data || []);
 
-    const { data: withs } = await supabase.from('withdraw_requests').select('*').eq('user_id', user.id).order('created_at', { ascending: false });
-    setWithdrawals(withs || []);
-
-    const { data: txns } = await supabase.from('wallet_transactions').select('*').eq('user_id', user.id).order('created_at', { ascending: false }).limit(20);
-    setTransactions(txns || []);
-
-    // Load UPI from settings
-    const { data: upiData } = await supabase.from('app_settings').select('value').eq('key', 'upi_id').maybeSingle();
-    setUpiId(upiData?.value || 'Not configured');
+    const map: Record<string, string> = {};
+    (settingsRes.data || []).forEach((s: any) => { map[s.key] = s.value; });
+    setSettings(map);
   };
+
+  const minDeposit = Number(settings.min_deposit) || 10;
+  const maxDeposit = Number(settings.max_deposit) || 10000;
+  const minWithdraw = Number(settings.min_withdrawal) || 100;
+  const upiId = settings.upi_id || 'Not configured';
+  const bankName = settings.bank_name || '';
+  const bankAccount = settings.bank_account_number || '';
+  const bankIfsc = settings.bank_ifsc || '';
+  const bankHolder = settings.bank_holder_name || '';
+  const qrUrl = settings.payment_qr_url || '';
+  const paymentInstructions = settings.payment_instructions || '';
+  const hasBankDetails = bankName || bankAccount;
 
   const handleDeposit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
     const amount = Number(depositAmount);
-    if (amount < MIN_DEPOSIT) { toast.error(`Minimum deposit is ₹${MIN_DEPOSIT}`); return; }
+    if (amount < minDeposit) { toast.error(`Minimum deposit is ₹${minDeposit}`); return; }
+    if (amount > maxDeposit) { toast.error(`Maximum deposit is ₹${maxDeposit}`); return; }
     if (!utrNumber.trim()) { toast.error('UTR number is required'); return; }
     if (!screenshot) { toast.error('Payment screenshot is required'); return; }
     if (screenshot.size > 5 * 1024 * 1024) { toast.error('Screenshot must be less than 5MB'); return; }
 
     setDepositLoading(true);
     try {
-      // Check duplicate UTR
       const { data: existing } = await supabase.from('deposit_requests').select('id').eq('utr_number', utrNumber.trim()).maybeSingle();
       if (existing) { toast.error('This UTR number has already been used'); setDepositLoading(false); return; }
 
-      // Upload screenshot
       const fileExt = screenshot.name.split('.').pop() || 'jpg';
       const filePath = `${user.id}/deposits/${Date.now()}.${fileExt}`;
       const { error: uploadError } = await supabase.storage.from('screenshots').upload(filePath, screenshot);
       if (uploadError) throw uploadError;
 
-      // Create deposit request
       const { error } = await supabase.from('deposit_requests').insert({
-        user_id: user.id,
-        amount,
-        utr_number: utrNumber.trim(),
-        payment_app: paymentApp.trim(),
-        screenshot_path: filePath,
-        status: 'pending',
+        user_id: user.id, amount, utr_number: utrNumber.trim(),
+        payment_app: paymentApp.trim(), screenshot_path: filePath, status: 'pending',
       });
       if (error) throw error;
 
       toast.success('Deposit request submitted!');
-      setDepositAmount('');
-      setUtrNumber('');
-      setPaymentApp('');
-      setScreenshot(null);
+      setDepositAmount(''); setUtrNumber(''); setPaymentApp(''); setScreenshot(null);
       loadData();
     } catch (err: any) {
       toast.error(err.message || 'Failed to submit deposit');
@@ -112,22 +115,18 @@ const WalletPage = () => {
     e.preventDefault();
     if (!user) return;
     const amount = Number(withdrawAmount);
-    if (amount < MIN_WITHDRAW) { toast.error(`Minimum withdrawal is ₹${MIN_WITHDRAW}`); return; }
+    if (amount < minWithdraw) { toast.error(`Minimum withdrawal is ₹${minWithdraw}`); return; }
     if (amount > balance) { toast.error('Insufficient balance'); return; }
     if (!withdrawUpi.trim()) { toast.error('UPI ID is required'); return; }
 
     setWithdrawLoading(true);
     try {
       const { error } = await supabase.from('withdraw_requests').insert({
-        user_id: user.id,
-        amount,
-        upi_id: withdrawUpi.trim(),
-        status: 'pending',
+        user_id: user.id, amount, upi_id: withdrawUpi.trim(), status: 'pending',
       });
       if (error) throw error;
       toast.success('Withdrawal request submitted!');
-      setWithdrawAmount('');
-      setWithdrawUpi('');
+      setWithdrawAmount(''); setWithdrawUpi('');
       loadData();
     } catch (err: any) {
       toast.error(err.message || 'Failed to submit withdrawal');
@@ -136,9 +135,9 @@ const WalletPage = () => {
     }
   };
 
-  const copyUpi = () => {
-    navigator.clipboard.writeText(upiId);
-    toast.success('UPI ID copied!');
+  const copyText = (text: string) => {
+    navigator.clipboard.writeText(text);
+    toast.success('Copied!');
   };
 
   const statusBadge = (status: string) => {
@@ -151,8 +150,7 @@ const WalletPage = () => {
     const Icon = s.icon;
     return (
       <Badge variant={s.variant} className="gap-1 capitalize">
-        <Icon className="h-3 w-3" />
-        {status}
+        <Icon className="h-3 w-3" />{status}
       </Badge>
     );
   };
@@ -184,24 +182,63 @@ const WalletPage = () => {
               <div className="rounded-lg border border-border bg-card p-6">
                 <h3 className="font-display text-lg font-bold text-foreground mb-4">Payment Details</h3>
                 <div className="space-y-3">
-                  <div className="rounded-lg bg-background p-4 border border-primary/20">
-                    <p className="text-xs text-muted-foreground mb-1">Send payment to UPI ID:</p>
-                    <div className="flex items-center gap-2">
-                      <p className="font-display text-lg font-bold text-primary">{upiId}</p>
-                      <button onClick={copyUpi} className="text-muted-foreground hover:text-primary">
-                        <Copy className="h-4 w-4" />
-                      </button>
+                  {/* UPI */}
+                  {upiId && upiId !== 'Not configured' && (
+                    <div className="rounded-lg bg-background p-4 border border-primary/20">
+                      <p className="text-xs text-muted-foreground mb-1">Send payment to UPI ID:</p>
+                      <div className="flex items-center gap-2">
+                        <p className="font-display text-lg font-bold text-primary">{upiId}</p>
+                        <button onClick={() => copyText(upiId)} className="text-muted-foreground hover:text-primary">
+                          <Copy className="h-4 w-4" />
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                  <p className="text-xs text-muted-foreground">Minimum deposit: ₹{MIN_DEPOSIT}</p>
+                  )}
+
+                  {/* Bank Details */}
+                  {hasBankDetails && (
+                    <div className="rounded-lg bg-background p-4 border border-primary/20">
+                      <p className="text-xs text-muted-foreground mb-2 flex items-center gap-1">
+                        <Building2 className="h-3 w-3" /> Bank Transfer:
+                      </p>
+                      <div className="space-y-1 text-sm">
+                        {bankName && <p className="text-foreground"><span className="text-muted-foreground">Bank:</span> {bankName}</p>}
+                        {bankAccount && (
+                          <div className="flex items-center gap-2">
+                            <p className="text-foreground"><span className="text-muted-foreground">A/C:</span> {bankAccount}</p>
+                            <button onClick={() => copyText(bankAccount)} className="text-muted-foreground hover:text-primary"><Copy className="h-3 w-3" /></button>
+                          </div>
+                        )}
+                        {bankIfsc && <p className="text-foreground"><span className="text-muted-foreground">IFSC:</span> {bankIfsc}</p>}
+                        {bankHolder && <p className="text-foreground"><span className="text-muted-foreground">Name:</span> {bankHolder}</p>}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* QR Code */}
+                  {qrUrl && (
+                    <div className="rounded-lg bg-background p-4 border border-primary/20 flex flex-col items-center">
+                      <p className="text-xs text-muted-foreground mb-2 flex items-center gap-1">
+                        <QrCode className="h-3 w-3" /> Scan QR to Pay
+                      </p>
+                      <img src={qrUrl} alt="Payment QR" className="h-40 w-40 rounded-lg object-contain" />
+                    </div>
+                  )}
+
+                  <p className="text-xs text-muted-foreground">Min: ₹{minDeposit} • Max: ₹{maxDeposit}</p>
+
                   <div className="rounded-lg bg-primary/5 p-3 border border-primary/10">
                     <p className="text-xs text-muted-foreground font-semibold mb-1">Instructions:</p>
-                    <ol className="text-xs text-muted-foreground space-y-1 list-decimal pl-4">
-                      <li>Send money to the UPI ID above</li>
-                      <li>Note down the UTR number from your payment app</li>
-                      <li>Fill the deposit form with amount, UTR & screenshot</li>
-                      <li>Wait for admin approval</li>
-                    </ol>
+                    {paymentInstructions ? (
+                      <p className="text-xs text-muted-foreground whitespace-pre-line">{paymentInstructions}</p>
+                    ) : (
+                      <ol className="text-xs text-muted-foreground space-y-1 list-decimal pl-4">
+                        <li>Send money using any payment method above</li>
+                        <li>Note down the UTR number from your payment app</li>
+                        <li>Fill the deposit form with amount, UTR & screenshot</li>
+                        <li>Wait for admin approval</li>
+                      </ol>
+                    )}
                   </div>
                 </div>
               </div>
@@ -212,7 +249,7 @@ const WalletPage = () => {
                 <form onSubmit={handleDeposit} className="space-y-4">
                   <div>
                     <Label className="text-foreground">Amount (₹)</Label>
-                    <Input type="number" value={depositAmount} onChange={e => setDepositAmount(e.target.value)} min={MIN_DEPOSIT} className="mt-1 bg-background" required />
+                    <Input type="number" value={depositAmount} onChange={e => setDepositAmount(e.target.value)} min={minDeposit} max={maxDeposit} className="mt-1 bg-background" required />
                   </div>
                   <div>
                     <Label className="text-foreground">UTR Number *</Label>
@@ -272,8 +309,8 @@ const WalletPage = () => {
                   </div>
                   <div>
                     <Label className="text-foreground">Amount (₹)</Label>
-                    <Input type="number" value={withdrawAmount} onChange={e => setWithdrawAmount(e.target.value)} min={MIN_WITHDRAW} className="mt-1 bg-background" required />
-                    <p className="text-xs text-muted-foreground mt-1">Min: ₹{MIN_WITHDRAW} • Available: ₹{balance}</p>
+                    <Input type="number" value={withdrawAmount} onChange={e => setWithdrawAmount(e.target.value)} min={minWithdraw} className="mt-1 bg-background" required />
+                    <p className="text-xs text-muted-foreground mt-1">Min: ₹{minWithdraw} • Available: ₹{balance}</p>
                   </div>
                   <Button type="submit" className="w-full" disabled={withdrawLoading}>
                     {withdrawLoading ? 'Submitting...' : 'Request Withdrawal'}
@@ -320,7 +357,7 @@ const WalletPage = () => {
                         <p className="text-xs text-muted-foreground capitalize">{t.type} • {t.description}</p>
                         <p className="text-xs text-muted-foreground">{new Date(t.created_at).toLocaleDateString()}</p>
                       </div>
-                      <span className={`text-sm font-bold ${t.amount > 0 ? 'text-success' : 'text-destructive'}`}>
+                      <span className={`text-sm font-bold ${t.amount > 0 ? 'text-green-500' : 'text-destructive'}`}>
                         {t.amount > 0 ? '+' : ''}₹{t.amount}
                       </span>
                     </div>
