@@ -11,7 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import {
-  Users, Trophy, DollarSign, Gamepad2, Clock, CheckCircle, XCircle, Plus, Trash2, Edit, Image, Shield, Settings, Medal, Wallet, Bell, Send
+  Users, Trophy, DollarSign, Gamepad2, Clock, CheckCircle, XCircle, Plus, Trash2, Edit, Image, Shield, Settings, Medal, Wallet, Bell, Send, HeartPulse
 } from 'lucide-react';
 import FloatingSupport from '@/components/FloatingSupport';
 import { Textarea } from '@/components/ui/textarea';
