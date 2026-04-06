@@ -591,7 +591,24 @@ const AdminPanel = () => {
           <StatCard title="Withdrawals" value={stats.pendingWithdrawals} icon={<Clock className="h-5 w-5" />} />
         </div>
 
-        <div className="mb-6">
+        {/* Health Status Indicator */}
+        <div className="mb-6 flex items-center gap-3 rounded-lg border border-border bg-card p-3">
+          <HeartPulse className={`h-5 w-5 ${healthStatus?.ok ? 'text-green-500 animate-pulse' : 'text-destructive'}`} />
+          <div className="flex-1">
+            <p className="text-sm font-semibold text-foreground">
+              Backend Health: {healthLoading ? 'Checking...' : healthStatus?.ok ? 'Online' : 'Offline'}
+            </p>
+            {healthStatus?.timestamp && (
+              <p className="text-xs text-muted-foreground">
+                Last ping: {new Date(healthStatus.timestamp).toLocaleString()} — {healthStatus.profiles} profiles
+              </p>
+            )}
+          </div>
+          <Button size="sm" variant="outline" onClick={fetchHealth} disabled={healthLoading}>
+            {healthLoading ? 'Pinging…' : 'Ping Now'}
+          </Button>
+        </div>
+
           <AdminActivityFeed />
         </div>
 
